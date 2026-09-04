@@ -1,6 +1,6 @@
 import type { ModelsResponse, Pool, RemoteModel } from "../types.js";
 import { DEFAULT_MODELS_BASE_URL } from "../types.js";
-import { CUSTOMIZABLE_AGENTS } from "./registry.js";
+import { agentSupportsModel, CUSTOMIZABLE_AGENTS } from "./registry.js";
 
 // Default pools configuration - will be extended with config file support
 const DEFAULT_POOLS: Pool[] = [
@@ -8,13 +8,17 @@ const DEFAULT_POOLS: Pool[] = [
     id: "claude-default",
     name: "Claude Default",
     model: "claude-sonnet-4-20250514",
-    agents: CUSTOMIZABLE_AGENTS,
+    agents: CUSTOMIZABLE_AGENTS.filter((agent) =>
+      agent.supportedProtocols.includes("messages")
+    ),
   },
   {
     id: "claude-fast",
     name: "Claude Fast",
     model: "claude-haiku-3",
-    agents: CUSTOMIZABLE_AGENTS,
+    agents: CUSTOMIZABLE_AGENTS.filter((agent) =>
+      agent.supportedProtocols.includes("messages")
+    ),
   },
 ];
 
@@ -49,6 +53,7 @@ export class PoolService {
   ): Promise<RemoteModel[]> {
     const models: RemoteModel[] = [];
     let afterId: string | undefined;
+    const seenCursors = new Set<string>();
 
     for (;;) {
       const url = new URL("models", baseUrl.replace(/\/+$/, "") + "/");
@@ -69,14 +74,25 @@ export class PoolService {
         );
       }
 
-      const body = (await res.json()) as ModelsResponse;
+      const body: unknown = await res.json();
+      if (!body || typeof body !== "object" || Array.isArray(body)) {
+        throw new Error("Models API returned an invalid response object");
+      }
+      const response = body as ModelsResponse;
+      if (response.data !== undefined && !Array.isArray(response.data)) {
+        throw new Error("Models API returned invalid data");
+      }
       // maxplus.models groups ids by wire protocol (messages,
       // chat_completions, responses, …) — invert it for per-model lookup.
       const caps = new Map<string, string[]>();
-      for (const [api, ids] of Object.entries(body.maxplus?.models ?? {})) {
+      for (const [api, ids] of Object.entries(response.maxplus?.models ?? {})) {
+        if (!Array.isArray(ids)) continue;
         for (const id of ids) caps.set(id, [...(caps.get(id) ?? []), api]);
       }
-      for (const m of body.data ?? []) {
+      for (const m of response.data ?? []) {
+        if (!m || typeof m.id !== "string" || m.id.length === 0) {
+          throw new Error("Models API returned an invalid model entry");
+        }
         models.push({
           id: m.id,
           displayName: m.display_name,
@@ -85,8 +101,12 @@ export class PoolService {
         });
       }
 
-      if (!body.has_more || !body.last_id) break;
-      afterId = body.last_id;
+      if (!response.has_more || !response.last_id) break;
+      if (seenCursors.has(response.last_id)) {
+        throw new Error("Models API returned a repeated pagination cursor");
+      }
+      seenCursors.add(response.last_id);
+      afterId = response.last_id;
     }
 
     return models;
@@ -102,7 +122,9 @@ export class PoolService {
       id: `remote:${m.id}`,
       name: m.displayName ?? m.id,
       model: m.id,
-      agents: CUSTOMIZABLE_AGENTS,
+      agents: m.apis?.length
+        ? CUSTOMIZABLE_AGENTS.filter((agent) => agentSupportsModel(agent, m))
+        : CUSTOMIZABLE_AGENTS,
     }));
   }
 

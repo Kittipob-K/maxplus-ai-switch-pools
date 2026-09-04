@@ -4,17 +4,25 @@ import { PoolService } from "../services/pool.js";
 import { AgentService } from "../services/agent.js";
 import { SettingsService } from "../services/settings.js";
 import { ensurePrerequisites } from "../services/prereq.js";
-import { ClaudeConfigService } from "../services/claude-config.js";
-import { OmpConfigService } from "../services/omp-config.js";
+import { endpointFromModelsBaseUrl } from "../services/endpoint.js";
+import {
+  agentSupportsModel,
+  CUSTOMIZABLE_AGENTS,
+  getAgentById,
+  isAgentId,
+} from "../services/registry.js";
 import { DEFAULT_MODELS_BASE_URL } from "../types.js";
-import type { AgentType, RunOptions } from "../types.js";
+import type { RunOptions } from "../types.js";
 import * as ui from "../ui.js";
 
 export const runCommand = new Command("run")
   .description("Run an AI agent with selected pool/model")
   .option("-p, --pool <id>", "Pool ID to use")
   .option("-m, --model <model>", "Model name to use")
-  .option("-a, --agent <type>", "Agent type (claude-code, omp, openai, custom)")
+  .option(
+    "-a, --agent <type>",
+    `Agent type (${CUSTOMIZABLE_AGENTS.map((agent) => agent.id).join(", ")})`
+  )
   .argument("[args...]", "Additional arguments to pass to the agent")
   .action(async (args: string[], options) => {
     const poolService = new PoolService();
@@ -37,12 +45,29 @@ export const runCommand = new Command("run")
       if (error) ui.warn(`${error} — using local pools`);
       if (source === "remote") ui.ok(`${pools.length} models loaded from API`);
 
+      const requestedAgent = options.agent as string | undefined;
+      if (requestedAgent && !isAgentId(requestedAgent)) {
+        ui.danger(
+          `Unknown agent "${requestedAgent}". Choose one of: ${CUSTOMIZABLE_AGENTS.map((agent) => agent.id).join(", ")}`
+        );
+        process.exit(1);
+      }
+      const selectablePools = requestedAgent
+        ? pools.filter((pool) =>
+            pool.agents.some((agent) => agent.id === requestedAgent)
+          )
+        : pools;
+      if (selectablePools.length === 0) {
+        ui.danger(`No available MaxPlus models support ${requestedAgent}.`);
+        process.exit(1);
+      }
+
       // Select pool if not specified
       let poolId = options.pool;
       if (!poolId) {
         poolId = await select({
           message: "Select a pool:",
-          choices: pools.map((p) => ({
+          choices: selectablePools.map((p) => ({
             name: `${p.name} (${p.model})`,
             value: p.id,
           })),
@@ -57,53 +82,64 @@ export const runCommand = new Command("run")
       }
 
       // Select agent if not specified
-      let agentType = options.agent as AgentType | undefined;
+      let agentType = requestedAgent;
       if (!agentType && pool.agents.length > 1) {
         agentType = await select({
           message: "Select an agent:",
           choices: pool.agents.map((a) => ({
             name: a.name,
-            value: a.type,
+            value: a.id,
           })),
         });
       }
 
       const agent = agentType
-        ? pool.agents.find((a) => a.type === agentType)
+        ? getAgentById(agentType)
         : pool.agents[0];
 
       if (!agent) {
         ui.danger("Agent not found");
         process.exit(1);
       }
-
-      // Oh My Pi needs models.yml on disk (env vars alone don't declare a
-      // custom provider) — refresh it from the live catalogue every run.
-      if (agent.type === "omp" && settings.apiKey) {
-        const endpoint = ClaudeConfigService.endpointFromBaseUrl(
-          settings.baseUrl ?? DEFAULT_MODELS_BASE_URL
-        );
-        const model = options.model ?? pool.model;
-        const written = await new OmpConfigService().apply({
-          endpoint,
-          models: models ?? [{ id: model }],
-          selected: model,
-        });
-        ui.ok(ui.filepath(written));
+      if (!options.model && !pool.agents.some((candidate) => candidate.id === agent.id)) {
+        ui.danger(`${agent.name} does not support the protocols advertised by ${pool.model}`);
+        process.exit(1);
       }
 
-      ui.h2(`🚀 Starting ${agent.name} with model ${pool.model}`);
+      const selectedModel = options.model ?? pool.model;
+      if (models) {
+        const remoteModel = models.find((model) => model.id === selectedModel);
+        if (!remoteModel) {
+          ui.danger(`Model "${selectedModel}" is not in the MaxPlus catalogue.`);
+          process.exit(1);
+        }
+        if (!agentSupportsModel(agent, remoteModel)) {
+          ui.danger(
+            `${agent.name} does not support the protocols advertised by ${selectedModel}`
+          );
+          process.exit(1);
+        }
+      }
+      const endpoint = endpointFromModelsBaseUrl(
+        settings.baseUrl ?? DEFAULT_MODELS_BASE_URL
+      );
+      const changed = await agentService.prepare(agent, {
+        apiKey: settings.apiKey!,
+        endpoint,
+        models: models ?? [{ id: selectedModel }],
+        selected: selectedModel,
+      });
+      for (const file of changed) ui.ok(ui.filepath(file));
+
+      ui.h2(`🚀 Starting ${agent.name} with model ${selectedModel}`);
 
       const runOptions: RunOptions = {
         pool: poolId,
-        model: options.model ?? pool.model,
-        agent: agent.type,
+        model: selectedModel,
         args,
         apiKey: settings.apiKey,
         baseUrl: settings.apiKey
-          ? ClaudeConfigService.endpointFromBaseUrl(
-              settings.baseUrl ?? DEFAULT_MODELS_BASE_URL
-            )
+          ? endpoint
           : undefined,
       };
 

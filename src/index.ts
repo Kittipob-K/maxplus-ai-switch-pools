@@ -24,5 +24,5 @@ const userArgs = process.argv.slice(2);
 if (userArgs.length === 0) {
   await customizeCommand.parseAsync(["node", "maxplus-ai"]);
 } else {
-  program.parse();
+  await program.parseAsync();
 }

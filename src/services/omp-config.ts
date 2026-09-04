@@ -1,8 +1,9 @@
-import { mkdir, readFile, writeFile, chmod } from "node:fs/promises";
+import { readFile } from "node:fs/promises";
 import { homedir } from "node:os";
-import { dirname, join } from "node:path";
+import { join } from "node:path";
 import { parse, stringify } from "yaml";
 import type { RemoteModel } from "../types.js";
+import { writeSecureFile } from "./secure-file.js";
 
 /** Provider id written into models.yml; also omp's --model prefix. */
 export const OMP_PROVIDER_ID = "maxplus";
@@ -45,8 +46,8 @@ export function ompApiFor(model: RemoteModel): string {
 export class OmpConfigService {
   readonly modelsPath: string;
 
-  constructor() {
-    this.modelsPath = join(homedir(), ".omp", "agent", "models.yml");
+  constructor(modelsPath?: string) {
+    this.modelsPath = modelsPath ?? join(homedir(), ".omp", "agent", "models.yml");
   }
 
   /**
@@ -58,9 +59,10 @@ export class OmpConfigService {
     try {
       const raw = await readFile(this.modelsPath, "utf8");
       const parsed = parse(raw);
-      if (parsed !== null && typeof parsed === "object") {
-        doc = parsed as Record<string, unknown>;
+      if (parsed === null || typeof parsed !== "object" || Array.isArray(parsed)) {
+        throw new Error("models.yml root must be an object");
       }
+      doc = parsed as Record<string, unknown>;
     } catch (err) {
       if ((err as NodeJS.ErrnoException).code !== "ENOENT") {
         throw new Error(
@@ -69,7 +71,17 @@ export class OmpConfigService {
       }
     }
 
-    const providers = (doc.providers ?? {}) as Record<string, unknown>;
+    const currentProviders = doc.providers;
+    if (currentProviders !== undefined && (
+      !currentProviders ||
+      typeof currentProviders !== "object" ||
+      Array.isArray(currentProviders)
+    )) {
+      throw new Error(`${this.modelsPath} has an invalid providers object`);
+    }
+    const providers = {
+      ...(currentProviders as Record<string, unknown> | undefined),
+    };
     const selected = input.models.find((m) => m.id === input.selected);
     // Selected model first, then the rest of the live catalogue.
     const catalogue = selected
@@ -91,12 +103,7 @@ export class OmpConfigService {
     };
     doc = { ...doc, providers };
 
-    await mkdir(dirname(this.modelsPath), { recursive: true, mode: 0o700 });
-    await writeFile(this.modelsPath, stringify(doc), {
-      encoding: "utf8",
-      mode: 0o600,
-    });
-    await chmod(this.modelsPath, 0o600);
+    await writeSecureFile(this.modelsPath, stringify(doc));
     return this.modelsPath;
   }
 }

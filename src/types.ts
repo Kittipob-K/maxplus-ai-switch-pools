@@ -1,4 +1,4 @@
-export type AgentType = "claude-code" | "omp" | "openai" | "custom";
+export type WireProtocol = "messages" | "chat_completions" | "responses";
 
 /**
  * Environment variables that must be cleared (unset) before launching
@@ -30,10 +30,32 @@ export const OMP_ENV_KEYS = [
   "PI_PROFILE",
 ] as const;
 
+/**
+ * Environment variables cleared before launching Pi. Pi reads its managed
+ * provider configuration from ~/.pi/agent/models.json; an inherited config
+ * directory or MaxPlus key must not override settings managed by this CLI.
+ */
+export const PI_ENV_KEYS = [
+  ...CLAUDE_CODE_ENV_KEYS,
+  "MAXPLUS_API_KEY",
+  "PI_CODING_AGENT_DIR",
+] as const;
+
+export const OPENAI_COMPATIBLE_ENV_KEYS = [
+  "OPENAI_API_KEY",
+  "OPENAI_API_BASE",
+  "OPENAI_BASE_URL",
+] as const;
+
+export const GATEWAY_CREDENTIAL_ENV_KEYS = [
+  ...CLAUDE_CODE_ENV_KEYS,
+  ...OPENAI_COMPATIBLE_ENV_KEYS,
+  "MAXPLUS_API_KEY",
+] as const;
+
 export interface Agent {
   id: string;
   name: string;
-  type: AgentType;
   command: string;
   args?: string[];
   /** Env var names removed from the child process environment before spawn. */
@@ -43,52 +65,45 @@ export interface Agent {
    * base URL. When omitted, maxplus-ai applies the per-type defaults so a single
    * configured key and endpoint work with every agent CLI automatically.
    */
-  apiEnvVarOverrides?: {
-    apiKey?: readonly string[];
-    baseUrl?: readonly string[];
-  };
+  apiKeyEnvVars: readonly string[];
+  baseUrlEnvVars: readonly string[];
   /**
    * Prefix prepended to the model id when passing --model to the agent CLI
    * (e.g. "maxplus/" for omp, whose model selector is provider/modelId).
    */
   modelPrefix?: string;
+  /** MaxPlus wire protocols this CLI can use. */
+  supportedProtocols: readonly WireProtocol[];
+  /** Optional suffix applied to the normalized endpoint before env export. */
+  baseUrlSuffix?: string;
+  /** Override the generic --model argument construction when needed. */
+  buildArgs?: (options: RunOptions) => string[];
+  /** Prepare persistent CLI configuration before launch. */
+  prepare?: (input: AgentPreparationInput) => Promise<string[]>;
+  /** Optional cleanup offered only in the interactive customize flow. */
+  scrubShellConfig?: () => Promise<string[]>;
+  installUrl?: string;
 }
 
 /**
- * Which environment variables each agent type reads its API key from.
- * A new agent CLI of a known type automatically gets the primary API key
+ * Which environment variables each agent reads its API key from.
+ * A registered agent automatically gets the primary API key
  * injected into these vars — no extra wiring needed.
  */
-export const API_KEY_ENV_VARS_BY_TYPE: Record<AgentType, readonly string[]> = {
-  "claude-code": ["ANTHROPIC_API_KEY"],
-  // omp reads the key from the env var named by apiKey in models.yml.
-  omp: ["MAXPLUS_API_KEY"],
-  openai: ["OPENAI_API_KEY"],
-  custom: [],
-};
-
 /** Resolve the API key env vars for an agent (override or per-type default). */
 export function apiKeyEnvVarsFor(agent: Agent): readonly string[] {
-  return agent.apiEnvVarOverrides?.apiKey ?? API_KEY_ENV_VARS_BY_TYPE[agent.type];
+  return agent.apiKeyEnvVars;
 }
 
 /**
- * Which environment variables each agent type reads its base URL from.
+ * Which environment variables each agent reads its base URL from.
  * The configured MaxPlus endpoint (e.g. https://api.maxplus-ai.cc) is
  * exported to these vars when launching, equivalent to:
  *   export ANTHROPIC_BASE_URL=https://api.maxplus-ai.cc
  */
-export const BASE_URL_ENV_VARS_BY_TYPE: Record<AgentType, readonly string[]> = {
-  "claude-code": ["ANTHROPIC_BASE_URL"],
-  // omp's base URL lives in ~/.omp/agent/models.yml, not in env.
-  omp: [],
-  openai: ["OPENAI_BASE_URL"],
-  custom: [],
-};
-
 /** Resolve the base URL env vars for an agent (override or per-type default). */
 export function baseUrlEnvVarsFor(agent: Agent): readonly string[] {
-  return agent.apiEnvVarOverrides?.baseUrl ?? BASE_URL_ENV_VARS_BY_TYPE[agent.type];
+  return agent.baseUrlEnvVars;
 }
 
 /** User settings persisted in ~/.config/maxplus-ai/settings.json */
@@ -130,12 +145,24 @@ export interface ModelsResponse {
 export interface RunOptions {
   pool?: string;
   model?: string;
-  agent?: AgentType;
   args?: string[];
-  /** Primary API key from settings; injected per agent type's env vars. */
+  /** Primary API key from settings; injected into the selected agent's env vars. */
   apiKey?: string;
   /** MaxPlus endpoint (without /v1) exported as the agent's base URL. */
   baseUrl?: string;
+}
+
+export interface LaunchPlan {
+  command: string;
+  args: string[];
+  env: NodeJS.ProcessEnv;
+}
+
+export interface AgentPreparationInput {
+  apiKey: string;
+  endpoint: string;
+  models: RemoteModel[];
+  selected: string;
 }
 
 export interface Pool {

@@ -3,8 +3,7 @@ import { confirm, select } from "@inquirer/prompts";
 import { AgentService } from "../services/agent.js";
 import { PoolService } from "../services/pool.js";
 import { SettingsService } from "../services/settings.js";
-import { ClaudeConfigService } from "../services/claude-config.js";
-import { OmpConfigService } from "../services/omp-config.js";
+import { endpointFromModelsBaseUrl } from "../services/endpoint.js";
 import { getAgentById, listAgentOptions } from "../services/registry.js";
 import { ensurePrerequisites } from "../services/prereq.js";
 import { runSettingsMenu } from "./settings.js";
@@ -71,7 +70,7 @@ export const customizeCommand = new Command("customize")
         // 2. Check BASE_URL and API_KEY: prompt for missing values now
         //    ("next best step" — same idea as forge login prerequisites).
         const settings = await ensurePrerequisites(settingsService);
-        const endpoint = ClaudeConfigService.endpointFromBaseUrl(
+        const endpoint = endpointFromModelsBaseUrl(
           settings.baseUrl ?? DEFAULT_MODELS_BASE_URL
         );
         const keyVars = apiKeyEnvVarsFor(agent);
@@ -104,60 +103,45 @@ export const customizeCommand = new Command("customize")
           ui.ok(`${pools.length} models loaded from API`);
         }
 
-        const poolId = await pickPool(pools);
-        const pool = pools.find((p) => p.id === poolId);
+        const compatiblePools = pools.filter((pool) =>
+          pool.agents.some((candidate) => candidate.id === agent.id)
+        );
+        if (compatiblePools.length === 0) {
+          ui.danger(`No available MaxPlus models support ${agent.name}.`);
+          continue;
+        }
+        const poolId = await pickPool(compatiblePools);
+        const pool = compatiblePools.find((p) => p.id === poolId);
         if (!pool) {
           ui.danger(`Pool "${poolId}" not found`);
           process.exit(1);
         }
 
-        // 4. For Claude Code, persist the MaxPlus configuration the same way
-        //    the official installer does (~/.claude.json + ~/.claude/settings.json).
-        if (agent.type === "claude-code" && settings.apiKey) {
-          const claudeConfig = new ClaudeConfigService();
-          ui.info(
-            `Configuring Claude Code → ${ui.url(endpoint)} (${ui.val(pool.model)})`
-          );
-          const changed = await claudeConfig.apply({
-            apiKey: settings.apiKey,
-            endpoint,
-            model: pool.model,
-          });
-          for (const c of changed) ui.ok(ui.filepath(c));
+        ui.info(
+          `Configuring ${agent.name} → ${ui.url(endpoint)} (${ui.val(pool.model)})`
+        );
+        const changed = await agentService.prepare(agent, {
+          apiKey: settings.apiKey!,
+          endpoint,
+          models: models ?? [{ id: pool.model }],
+          selected: pool.model,
+        });
+        for (const file of changed) ui.ok(ui.filepath(file));
 
-          if (
-            await confirm({
-              message: "Remove stale Claude exports from your shell rc files?",
-              default: false,
-            })
-          ) {
-            const touched = await claudeConfig.scrubShellRc();
-            touched.length > 0
-              ? ui.ok(`scrubbed ${touched.map(ui.filepath).join(", ")}`)
-              : ui.muted("  (no stale exports found)");
-          }
-        }
-
-        // 4b. For Oh My Pi, write the live catalogue into models.yml (wire
-        //     per model) so /model inside omp always reflects MaxPlus pools.
-        if (agent.type === "omp" && settings.apiKey) {
-          const ompConfig = new OmpConfigService();
-          ui.info(
-            `Configuring Oh My Pi → ${ui.url(endpoint)}/v1 (${ui.val(pool.model)})`
-          );
-          const written = await ompConfig.apply({
-            endpoint,
-            models: models ?? [{ id: pool.model }],
-            selected: pool.model,
-          });
-          ui.ok(ui.filepath(written));
+        if (agent.scrubShellConfig && await confirm({
+          message: `Remove stale ${agent.name} exports from your shell rc files?`,
+          default: false,
+        })) {
+          const touched = await agentService.scrubShellConfig(agent);
+          touched.length > 0
+            ? ui.ok(`scrubbed ${touched.map(ui.filepath).join(", ")}`)
+            : ui.muted("  (no stale exports found)");
         }
 
         ui.h2(`🚀 Starting ${agent.name} with model ${pool.model}`);
         const exitCode = await agentService.run(agent, {
           pool: poolId,
           model: pool.model,
-          agent: agent.type,
           apiKey: settings.apiKey,
           baseUrl: settings.apiKey ? endpoint : undefined,
         });

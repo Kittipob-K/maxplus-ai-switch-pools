@@ -5,7 +5,7 @@ Guidance for AI coding agents working in this repository.
 ## What this project is
 
 `maxplus-ai-switch-pools` is a TypeScript ESM CLI (binary: **`maxplus-ai`**) that
-switches AI pools/models and configures agent CLIs (currently Claude Code) to
+switches AI pools/models and configures agent CLIs to
 use the MaxPlus AI gateway with one primary API key. See `README.md` for
 user-facing docs.
 
@@ -14,20 +14,20 @@ user-facing docs.
 ```bash
 npm run build        # tsc -> dist/ (ESM)
 npx tsc --noEmit     # typecheck only
+npm test             # build + node:test unit/config/E2E suite
 npm run dev          # run via tsx without building
 node dist/index.js   # built CLI; `maxplus-ai` = npm link global
 ```
 
 - Node.js **>= 22** required (`Promise.withResolvers` is used).
-- No test framework is configured yet — verify changes by building and running
-  the CLI manually (see Testing below).
+- Tests use the built-in `node:test` runner (see Testing below).
 
 ## Architecture
 
 ```
 src/
   index.ts              commander program; no-args entry -> customize flow
-  types.ts              shared types + per-type env var maps + defaults
+  types.ts              shared types, protocols, launch/config contracts
   ui.ts                 semantic CLI output primitives (r-lib cli style)
   commands/
     customize.ts        default interactive flow (pick agent -> fetch models -> launch)
@@ -38,23 +38,25 @@ src/
     settings.ts         SettingsService: read/write ~/.config/maxplus-ai/settings.json
     prereq.ts           ensurePrerequisites(): inline prompts for missing baseUrl/apiKey
     pool.ts             PoolService: local pools + MaxPlus /models API (Bearer, pagination)
-    agent.ts            AgentService: unset env, export key+base URL, spawn agent
+    agent.ts            AgentService: prepare launch plan, clean env, spawn agent
     claude-config.ts    installer-parity writes of ~/.claude.json + ~/.claude/settings.json
     omp-config.ts       merge-write ~/.omp/agent/models.yml (per-model wire api
                         from MaxPlus /models capabilities)
-    registry.ts         CUSTOMIZABLE_AGENTS registry (add new agent CLIs here)
+    pi-config.ts        merge-write ~/.pi/agent/models.json
+    opencode-config.ts  merge-write ~/.config/opencode/opencode.json
+    secure-file.ts      atomic 0600 writes + managed-directory permissions
+    registry.ts         agent adapters: env, protocols, args, config preparation
 ```
 
 ### Core invariants (do not break)
 
 1. **Unset before export.** `AgentService.applyUnset()` removes inherited
-   `ANTHROPIC_*`/`CLAUDE_CODE_OAUTH_TOKEN` vars from `process.env`, then
+   Anthropic/OpenAI/MaxPlus proxy credentials from `process.env`, then
    `prepareEnv()` re-injects only Settings values into the child env. The
    child process must never see inherited proxy credentials.
-2. **One key, all agents.** The primary API key is injected per agent type via
-   `API_KEY_ENV_VARS_BY_TYPE` / `BASE_URL_ENV_VARS_BY_TYPE` (`src/types.ts`).
-   Add a new type entry or per-agent `apiEnvVarOverrides` instead of hardcoding
-   env var names in commands.
+2. **One key, all agents.** The primary API key is injected using each registry
+   entry's `apiKeyEnvVars` / `baseUrlEnvVars`. Never hardcode agent env names in
+   commands.
 3. **Settings are the single source of truth.** Anything the flow needs
    (baseUrl, apiKey) must come from `SettingsService` (via
    `ensurePrerequisites` in interactive flows), never from `process.env`.
@@ -79,18 +81,18 @@ src/
 
 ## Adding a new agent CLI
 
-1. Add an `Agent` entry to `CUSTOMIZABLE_AGENTS` in `src/services/registry.ts`
-   (name, command, `envToUnset`, optional `apiEnvVarOverrides`).
-2. Add its type's env vars to both `*_ENV_VARS_BY_TYPE` maps in `src/types.ts`
-   if new.
-3. If it persists config like Claude Code does, add a branch mirroring
-   `claude-config.ts` in `customize.ts` step 4; otherwise the generic
-   unset+export path works unchanged.
+1. Add one `Agent` adapter to `CUSTOMIZABLE_AGENTS` in
+   `src/services/registry.ts`: command, env mapping, supported protocols, model
+   argument behavior, and optional `prepare` config writer.
+2. Do not add agent-specific branches to `run.ts` or `customize.ts`; both flows
+   must stay behind `AgentService.prepare()` / `createLaunchPlan()`.
+3. Add launch-plan/config tests plus an isolated E2E test using temporary
+   HOME/XDG and a stub executable.
 
 ## Testing
 
-There is no test runner. Use this recipe for end-to-end checks without
-touching the developer's real config:
+Run `npm test`. E2E tests follow this recipe without touching the developer's
+real config:
 
 - Point settings elsewhere: `export XDG_CONFIG_HOME=$(mktemp -d)` **before**
   writing any test settings file (past mistake: a test seeded the real

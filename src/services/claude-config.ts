@@ -1,6 +1,8 @@
-import { mkdir, readFile, writeFile, chmod, unlink } from "node:fs/promises";
+import { readFile, writeFile, unlink } from "node:fs/promises";
 import { homedir } from "node:os";
-import { dirname, join } from "node:path";
+import { join } from "node:path";
+import { endpointFromModelsBaseUrl } from "./endpoint.js";
+import { writeSecureFile } from "./secure-file.js";
 
 /**
  * Configures Claude Code the same way the MaxPlus one-line installer does:
@@ -19,19 +21,23 @@ export interface ClaudeConfigInput {
 
 async function readJson(file: string): Promise<Record<string, unknown>> {
   try {
-    return JSON.parse(await readFile(file, "utf8")) as Record<string, unknown>;
-  } catch {
-    return {};
+    const parsed: unknown = JSON.parse(await readFile(file, "utf8"));
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+      throw new Error("root must be an object");
+    }
+    return parsed as Record<string, unknown>;
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") return {};
+    throw new Error(`${file} is not valid JSON - fix it before switching pools`);
   }
 }
 
-async function writeJson(file: string, data: unknown): Promise<void> {
-  await mkdir(dirname(file), { recursive: true });
-  await writeFile(file, JSON.stringify(data, null, 2) + "\n", {
-    encoding: "utf8",
-    mode: 0o600,
-  });
-  await chmod(file, 0o600);
+async function writeJson(
+  file: string,
+  data: unknown,
+  secureParent: boolean
+): Promise<void> {
+  await writeSecureFile(file, `${JSON.stringify(data, null, 2)}\n`, { secureParent });
 }
 
 /** Approve the key's last-20-char tail so claude does not prompt about it. */
@@ -51,15 +57,15 @@ export class ClaudeConfigService {
   readonly claudeJsonPath: string;
   readonly settingsPath: string;
 
-  constructor() {
+  constructor(paths?: { claudeJsonPath: string; settingsPath: string }) {
     const home = homedir();
-    this.claudeJsonPath = join(home, ".claude.json");
-    this.settingsPath = join(home, ".claude", "settings.json");
+    this.claudeJsonPath = paths?.claudeJsonPath ?? join(home, ".claude.json");
+    this.settingsPath = paths?.settingsPath ?? join(home, ".claude", "settings.json");
   }
 
   /** Derive the Claude base URL from a models baseUrl (strip /v1). */
   static endpointFromBaseUrl(baseUrl: string): string {
-    return baseUrl.replace(/\/+$/, "").replace(/\/v1$/, "");
+    return endpointFromModelsBaseUrl(baseUrl);
   }
 
   async apply(input: ClaudeConfigInput): Promise<string[]> {
@@ -70,7 +76,7 @@ export class ClaudeConfigService {
     const state = approveKeyTail(await readJson(this.claudeJsonPath), apiKey);
     state.hasCompletedOnboarding = true;
     state.bypassPermissionsModeAccepted = true;
-    await writeJson(this.claudeJsonPath, state);
+    await writeJson(this.claudeJsonPath, state, false);
     changed.push(this.claudeJsonPath);
 
     // 2. ~/.claude/settings.json — env, model, permissions (installer parity).
@@ -100,7 +106,7 @@ export class ClaudeConfigService {
     }
     if (!settings.model) settings.model = model;
 
-    await writeJson(this.settingsPath, settings);
+    await writeJson(this.settingsPath, settings, true);
     changed.push(this.settingsPath);
 
     // 3. Remove stale OAuth/credential files so the API key takes over.
@@ -111,8 +117,8 @@ export class ClaudeConfigService {
       try {
         await unlink(stale);
         changed.push(`removed ${stale}`);
-      } catch {
-        /* not present — fine */
+      } catch (error) {
+        if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
       }
     }
 

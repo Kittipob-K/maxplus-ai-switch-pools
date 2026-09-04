@@ -1,8 +1,19 @@
 import { spawn } from "node:child_process";
-import type { Agent, RunOptions } from "../types.js";
-import { apiKeyEnvVarsFor, baseUrlEnvVarsFor } from "../types.js";
+import type { Agent, AgentPreparationInput, LaunchPlan, RunOptions } from "../types.js";
+import {
+  apiKeyEnvVarsFor,
+  baseUrlEnvVarsFor,
+  GATEWAY_CREDENTIAL_ENV_KEYS,
+} from "../types.js";
 
 export class AgentService {
+  async prepare(agent: Agent, input: AgentPreparationInput): Promise<string[]> {
+    return agent.prepare ? agent.prepare(input) : [];
+  }
+
+  async scrubShellConfig(agent: Agent): Promise<string[]> {
+    return agent.scrubShellConfig ? agent.scrubShellConfig() : [];
+  }
   /**
    * Build a clean environment for the agent: remove (unset) every env var
    * listed in agent.envToUnset, then export the primary API key and the
@@ -13,7 +24,11 @@ export class AgentService {
    */
   prepareEnv(agent: Agent, options: RunOptions = {}): NodeJS.ProcessEnv {
     const env: NodeJS.ProcessEnv = { ...process.env };
-    for (const key of agent.envToUnset ?? []) {
+    const keysToUnset = new Set([
+      ...GATEWAY_CREDENTIAL_ENV_KEYS,
+      ...(agent.envToUnset ?? []),
+    ]);
+    for (const key of keysToUnset) {
       delete env[key];
     }
     if (options.apiKey) {
@@ -22,8 +37,10 @@ export class AgentService {
       }
     }
     if (options.baseUrl) {
+      const normalizedBaseUrl = options.baseUrl.replace(/\/+$/, "");
+      const baseUrl = normalizedBaseUrl + (agent.baseUrlSuffix ?? "");
       for (const key of baseUrlEnvVarsFor(agent)) {
-        env[key] = options.baseUrl;
+        env[key] = baseUrl;
       }
     }
     return env;
@@ -31,7 +48,9 @@ export class AgentService {
 
   /** Report which env vars were unset (those that were actually present). */
   getUnsetVars(agent: Agent): string[] {
-    return (agent.envToUnset ?? []).filter((key) => key in process.env);
+    return [...new Set([...GATEWAY_CREDENTIAL_ENV_KEYS, ...(agent.envToUnset ?? [])])].filter(
+      (key) => key in process.env
+    );
   }
 
   /**
@@ -48,14 +67,13 @@ export class AgentService {
   }
 
   async run(agent: Agent, options: RunOptions = {}): Promise<number> {
-    const args = this.buildArgs(agent, options);
-    const env = this.prepareEnv(agent, options);
+    const plan = this.createLaunchPlan(agent, options);
     const { promise, resolve, reject } = Promise.withResolvers<number>();
 
-    const child = spawn(agent.command, args, {
+    const child = spawn(plan.command, plan.args, {
       stdio: "inherit",
       shell: false,
-      env,
+      env: plan.env,
     });
 
     child.on("close", (code) => {
@@ -63,13 +81,29 @@ export class AgentService {
     });
 
     child.on("error", (err) => {
+      if ((err as NodeJS.ErrnoException).code === "ENOENT") {
+        const installHint = agent.installUrl
+          ? ` Install it from ${agent.installUrl}`
+          : "";
+        reject(new Error(`${agent.name} is not installed or is not on PATH.${installHint}`));
+        return;
+      }
       reject(err);
     });
 
     return promise;
   }
 
+  createLaunchPlan(agent: Agent, options: RunOptions = {}): LaunchPlan {
+    return {
+      command: agent.command,
+      args: this.buildArgs(agent, options),
+      env: this.prepareEnv(agent, options),
+    };
+  }
+
   private buildArgs(agent: Agent, options: RunOptions): string[] {
+    if (agent.buildArgs) return agent.buildArgs(options);
     const args: string[] = [...(agent.args ?? [])];
 
     // Add model flag if specified; agent may need a provider prefix.

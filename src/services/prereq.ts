@@ -9,8 +9,8 @@ import * as ui from "../ui.js";
  * an agent, verify the base URL and API key are configured; when missing,
  * show an input row right there instead of failing later.
  *
- *   ? ANTHROPIC_BASE_URL = https://api.maxplus-ai.cc/v1
- *   ? ANTHROPIC_API_KEY  = [input is hidden]
+ *   ? MAXPLUS_BASE_URL = https://api.maxplus-ai.cc/v1
+ *   ? MAXPLUS_API_KEY  = [input is hidden]
  *
  * Newly entered values are persisted to settings so the user is never
  * asked again.
@@ -18,7 +18,7 @@ import * as ui from "../ui.js";
 
 async function askBaseUrl(): Promise<string> {
   const url = await input({
-    message: `${ui.envvar("ANTHROPIC_BASE_URL")} =`,
+    message: `${ui.envvar("MAXPLUS_BASE_URL")} =`,
     default: DEFAULT_MODELS_BASE_URL,
     validate: (v) => {
       const s = v.trim();
@@ -37,7 +37,7 @@ async function askBaseUrl(): Promise<string> {
 async function askApiKey(): Promise<string> {
   ui.muted(`  Don't have a key? Create one at ${ui.url("https://maxplus-ai.cc/dashboard")}`);
   const key = await password({
-    message: `${ui.envvar("ANTHROPIC_API_KEY")} =`,
+    message: `${ui.envvar("MAXPLUS_API_KEY")} =`,
     validate: (v) => (v.trim().length > 0 ? true : "API key cannot be empty"),
   });
   return key.trim();

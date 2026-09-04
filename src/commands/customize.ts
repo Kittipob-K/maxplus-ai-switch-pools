@@ -40,6 +40,9 @@ export const customizeCommand = new Command("customize")
     const settingsService = new SettingsService();
 
     try {
+      // Show logo before anything else.
+      ui.logo();
+
       // Ensure credentials are configured before entering the menu.
       const settings = await ensurePrerequisites(settingsService);
 

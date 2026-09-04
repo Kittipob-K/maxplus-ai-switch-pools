@@ -1,18 +1,98 @@
 export type AgentType = "claude-code" | "openai" | "custom";
 
+/**
+ * Environment variables that must be cleared (unset) before launching
+ * Claude Code so it falls back to its own credential/OAuth state instead
+ * of an inherited proxy configuration.
+ *
+ * Equivalent to:
+ *   unset ANTHROPIC_BASE_URL ANTHROPIC_API_KEY ANTHROPIC_AUTH_TOKEN \
+ *         ANTHROPIC_TOKEN CLAUDE_CODE_OAUTH_TOKEN
+ */
+export const CLAUDE_CODE_ENV_KEYS = [
+  "ANTHROPIC_BASE_URL",
+  "ANTHROPIC_API_KEY",
+  "ANTHROPIC_AUTH_TOKEN",
+  "ANTHROPIC_TOKEN",
+  "CLAUDE_CODE_OAUTH_TOKEN",
+] as const;
+
 export interface Agent {
   id: string;
   name: string;
   type: AgentType;
   command: string;
   args?: string[];
+  /** Env var names removed from the child process environment before spawn. */
+  envToUnset?: readonly string[];
+  /**
+   * Per-agent overrides of the env vars that receive the primary API key /
+   * base URL. When omitted, maxplus-ai applies the per-type defaults so a single
+   * configured key and endpoint work with every agent CLI automatically.
+   */
+  apiEnvVarOverrides?: {
+    apiKey?: readonly string[];
+    baseUrl?: readonly string[];
+  };
 }
 
-export interface Pool {
+/**
+ * Which environment variables each agent type reads its API key from.
+ * A new agent CLI of a known type automatically gets the primary API key
+ * injected into these vars — no extra wiring needed.
+ */
+export const API_KEY_ENV_VARS_BY_TYPE: Record<AgentType, readonly string[]> = {
+  "claude-code": ["ANTHROPIC_API_KEY"],
+  openai: ["OPENAI_API_KEY"],
+  custom: [],
+};
+
+/** Resolve the API key env vars for an agent (override or per-type default). */
+export function apiKeyEnvVarsFor(agent: Agent): readonly string[] {
+  return agent.apiEnvVarOverrides?.apiKey ?? API_KEY_ENV_VARS_BY_TYPE[agent.type];
+}
+
+/**
+ * Which environment variables each agent type reads its base URL from.
+ * The configured MaxPlus endpoint (e.g. https://api.maxplus-ai.cc) is
+ * exported to these vars when launching, equivalent to:
+ *   export ANTHROPIC_BASE_URL=https://api.maxplus-ai.cc
+ */
+export const BASE_URL_ENV_VARS_BY_TYPE: Record<AgentType, readonly string[]> = {
+  "claude-code": ["ANTHROPIC_BASE_URL"],
+  openai: ["OPENAI_BASE_URL"],
+  custom: [],
+};
+
+/** Resolve the base URL env vars for an agent (override or per-type default). */
+export function baseUrlEnvVarsFor(agent: Agent): readonly string[] {
+  return agent.apiEnvVarOverrides?.baseUrl ?? BASE_URL_ENV_VARS_BY_TYPE[agent.type];
+}
+
+/** User settings persisted in ~/.config/maxplus-ai/settings.json */
+export interface Settings {
+  /** Primary API key injected into every agent CLI that reads a key from env. */
+  apiKey?: string;
+  /** Base URL of the MaxPlus models API. Default: https://api.maxplus-ai.cc/v1 */
+  baseUrl?: string;
+}
+
+/** Default MaxPlus API endpoint used to list selectable models/pools. */
+export const DEFAULT_MODELS_BASE_URL = "https://api.maxplus-ai.cc/v1";
+
+/** A model/pool entry returned by the MaxPlus /models endpoint. */
+export interface RemoteModel {
   id: string;
-  name: string;
-  model: string;
-  agents: Agent[];
+  displayName?: string;
+  type?: string;
+}
+
+/** Shape of the Anthropic-style paginated /models response. */
+export interface ModelsResponse {
+  data?: Array<{ id: string; display_name?: string; type?: string }>;
+  first_id?: string;
+  last_id?: string;
+  has_more?: boolean;
 }
 
 export interface RunOptions {
@@ -20,4 +100,15 @@ export interface RunOptions {
   model?: string;
   agent?: AgentType;
   args?: string[];
+  /** Primary API key from settings; injected per agent type's env vars. */
+  apiKey?: string;
+  /** MaxPlus endpoint (without /v1) exported as the agent's base URL. */
+  baseUrl?: string;
+}
+
+export interface Pool {
+  id: string;
+  name: string;
+  model: string;
+  agents: Agent[];
 }

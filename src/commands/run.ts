@@ -1,9 +1,13 @@
 import { Command } from "commander";
-import chalk from "chalk";
 import { select } from "@inquirer/prompts";
 import { PoolService } from "../services/pool.js";
 import { AgentService } from "../services/agent.js";
+import { SettingsService } from "../services/settings.js";
+import { ensurePrerequisites } from "../services/prereq.js";
+import { ClaudeConfigService } from "../services/claude-config.js";
+import { DEFAULT_MODELS_BASE_URL } from "../types.js";
 import type { AgentType, RunOptions } from "../types.js";
+import * as ui from "../ui.js";
 
 export const runCommand = new Command("run")
   .description("Run an AI agent with selected pool/model")
@@ -14,12 +18,27 @@ export const runCommand = new Command("run")
   .action(async (args: string[], options) => {
     const poolService = new PoolService();
     const agentService = new AgentService();
+    const settingsService = new SettingsService();
 
     try {
+      // Settings must exist before we can do anything: check BASE_URL and
+      // API_KEY, prompting for missing values (next-best-step flow).
+      const settings = await ensurePrerequisites(settingsService);
+
+      // Resolve selectable pools: live MaxPlus model list when available,
+      // otherwise the built-in local pools.
+      const spinner = new ui.Spinner("Fetching models from MaxPlus API");
+      const { pools, source, error } = await poolService.resolvePools({
+        apiKey: settings.apiKey,
+        baseUrl: settings.baseUrl,
+      });
+      spinner.stop();
+      if (error) ui.warn(`${error} — using local pools`);
+      if (source === "remote") ui.ok(`${pools.length} models loaded from API`);
+
       // Select pool if not specified
       let poolId = options.pool;
       if (!poolId) {
-        const pools = poolService.listPools();
         poolId = await select({
           message: "Select a pool:",
           choices: pools.map((p) => ({
@@ -29,9 +48,10 @@ export const runCommand = new Command("run")
         });
       }
 
-      const pool = poolService.getPool(poolId);
+      const pool =
+        pools.find((p) => p.id === poolId) ?? poolService.getPool(poolId);
       if (!pool) {
-        console.error(chalk.red(`Pool "${poolId}" not found`));
+        ui.danger(`Pool "${poolId}" not found`);
         process.exit(1);
       }
 
@@ -52,19 +72,23 @@ export const runCommand = new Command("run")
         : pool.agents[0];
 
       if (!agent) {
-        console.error(chalk.red(`Agent not found`));
+        ui.danger("Agent not found");
         process.exit(1);
       }
 
-      console.log(
-        chalk.cyan(`\n🚀 Starting ${agent.name} with model ${pool.model}\n`)
-      );
+      ui.h2(`🚀 Starting ${agent.name} with model ${pool.model}`);
 
       const runOptions: RunOptions = {
         pool: poolId,
         model: options.model ?? pool.model,
         agent: agent.type,
         args,
+        apiKey: settings.apiKey,
+        baseUrl: settings.apiKey
+          ? ClaudeConfigService.endpointFromBaseUrl(
+              settings.baseUrl ?? DEFAULT_MODELS_BASE_URL
+            )
+          : undefined,
       };
 
       const exitCode = await agentService.run(agent, runOptions);
@@ -74,7 +98,7 @@ export const runCommand = new Command("run")
         // User cancelled - graceful exit
         process.exit(0);
       }
-      console.error(chalk.red("Error:"), err);
+      ui.danger(err instanceof Error ? err.message : String(err));
       process.exit(1);
     }
   });

@@ -40,6 +40,9 @@ export const customizeCommand = new Command("customize")
     const settingsService = new SettingsService();
 
     try {
+      // Ensure credentials are configured before entering the menu.
+      const settings = await ensurePrerequisites(settingsService);
+
       // Main loop: keep offering the menu until the user cancels (Ctrl+C).
       for (;;) {
         const agentId = await pickAgent();
@@ -67,9 +70,7 @@ export const customizeCommand = new Command("customize")
           ui.muted("  (no env vars to unset)");
         }
 
-        // 2. Check BASE_URL and API_KEY: prompt for missing values now
-        //    ("next best step" — same idea as forge login prerequisites).
-        const settings = await ensurePrerequisites(settingsService);
+        // 2. Inject the primary API key and base URL into the agent's environment.
         const endpoint = endpointFromModelsBaseUrl(
           settings.baseUrl ?? DEFAULT_MODELS_BASE_URL
         );

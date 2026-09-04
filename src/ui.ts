@@ -165,6 +165,16 @@ export function logo(): void {
 ██      ██ ██   ██ ██   ██ ██      ███████  ██████  ███████       ██   ██ ██
   `.trim();
 
+  const logoWidth = 85;
+  const width = consoleWidth();
+
+  // Hide logo if terminal is too narrow.
+  if (width < logoWidth) {
+    writeLine(chalk.cyan.bold("MAXPLUS-AI"));
+    writeLine();
+    return;
+  }
+
   writeLine(chalk.cyan(art));
   writeLine();
 }

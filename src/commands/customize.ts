@@ -4,6 +4,7 @@ import { AgentService } from "../services/agent.js";
 import { PoolService } from "../services/pool.js";
 import { SettingsService } from "../services/settings.js";
 import { ClaudeConfigService } from "../services/claude-config.js";
+import { OmpConfigService } from "../services/omp-config.js";
 import { getAgentById, listAgentOptions } from "../services/registry.js";
 import { ensurePrerequisites } from "../services/prereq.js";
 import { runSettingsMenu } from "./settings.js";
@@ -90,7 +91,7 @@ export const customizeCommand = new Command("customize")
 
         // 3. Pull the model list from the MaxPlus API and let the user choose.
         const spinner = new ui.Spinner("Fetching models from MaxPlus API");
-        const { pools, source, error } = await poolService.resolvePools({
+        const { pools, source, error, models } = await poolService.resolvePools({
           apiKey: settings.apiKey,
           baseUrl: settings.baseUrl,
         });
@@ -135,6 +136,21 @@ export const customizeCommand = new Command("customize")
               ? ui.ok(`scrubbed ${touched.map(ui.filepath).join(", ")}`)
               : ui.muted("  (no stale exports found)");
           }
+        }
+
+        // 4b. For Oh My Pi, write the live catalogue into models.yml (wire
+        //     per model) so /model inside omp always reflects MaxPlus pools.
+        if (agent.type === "omp" && settings.apiKey) {
+          const ompConfig = new OmpConfigService();
+          ui.info(
+            `Configuring Oh My Pi → ${ui.url(endpoint)}/v1 (${ui.val(pool.model)})`
+          );
+          const written = await ompConfig.apply({
+            endpoint,
+            models: models ?? [{ id: pool.model }],
+            selected: pool.model,
+          });
+          ui.ok(ui.filepath(written));
         }
 
         ui.h2(`🚀 Starting ${agent.name} with model ${pool.model}`);

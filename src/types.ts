@@ -1,4 +1,4 @@
-export type AgentType = "claude-code" | "openai" | "custom";
+export type AgentType = "claude-code" | "omp" | "openai" | "custom";
 
 /**
  * Environment variables that must be cleared (unset) before launching
@@ -15,6 +15,19 @@ export const CLAUDE_CODE_ENV_KEYS = [
   "ANTHROPIC_AUTH_TOKEN",
   "ANTHROPIC_TOKEN",
   "CLAUDE_CODE_OAUTH_TOKEN",
+] as const;
+
+/**
+ * Environment variables cleared before launching Oh My Pi: the same
+ * Anthropic/proxy inheritance as Claude Code, plus omp/pi config-dir and
+ * profile pointers that would relocate ~/.omp away from the file we wrote.
+ */
+export const OMP_ENV_KEYS = [
+  ...CLAUDE_CODE_ENV_KEYS,
+  "PI_CODING_AGENT_DIR",
+  "PI_CONFIG_DIR",
+  "OMP_PROFILE",
+  "PI_PROFILE",
 ] as const;
 
 export interface Agent {
@@ -34,6 +47,11 @@ export interface Agent {
     apiKey?: readonly string[];
     baseUrl?: readonly string[];
   };
+  /**
+   * Prefix prepended to the model id when passing --model to the agent CLI
+   * (e.g. "maxplus/" for omp, whose model selector is provider/modelId).
+   */
+  modelPrefix?: string;
 }
 
 /**
@@ -43,6 +61,8 @@ export interface Agent {
  */
 export const API_KEY_ENV_VARS_BY_TYPE: Record<AgentType, readonly string[]> = {
   "claude-code": ["ANTHROPIC_API_KEY"],
+  // omp reads the key from the env var named by apiKey in models.yml.
+  omp: ["MAXPLUS_API_KEY"],
   openai: ["OPENAI_API_KEY"],
   custom: [],
 };
@@ -60,6 +80,8 @@ export function apiKeyEnvVarsFor(agent: Agent): readonly string[] {
  */
 export const BASE_URL_ENV_VARS_BY_TYPE: Record<AgentType, readonly string[]> = {
   "claude-code": ["ANTHROPIC_BASE_URL"],
+  // omp's base URL lives in ~/.omp/agent/models.yml, not in env.
+  omp: [],
   openai: ["OPENAI_BASE_URL"],
   custom: [],
 };
@@ -85,6 +107,11 @@ export interface RemoteModel {
   id: string;
   displayName?: string;
   type?: string;
+  /**
+   * Wire protocols the gateway serves this model on, from the response's
+   * maxplus.models capability map (e.g. ["messages", "chat_completions"]).
+   */
+  apis?: string[];
 }
 
 /** Shape of the Anthropic-style paginated /models response. */
@@ -93,6 +120,11 @@ export interface ModelsResponse {
   first_id?: string;
   last_id?: string;
   has_more?: boolean;
+  /** MaxPlus extension: model ids grouped by supported wire protocol. */
+  maxplus?: {
+    capabilities?: string[];
+    models?: Record<string, string[]>;
+  };
 }
 
 export interface RunOptions {

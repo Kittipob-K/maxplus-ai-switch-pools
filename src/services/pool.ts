@@ -1,5 +1,6 @@
 import type { ModelsResponse, Pool, RemoteModel } from "../types.js";
-import { CLAUDE_CODE_ENV_KEYS, DEFAULT_MODELS_BASE_URL } from "../types.js";
+import { DEFAULT_MODELS_BASE_URL } from "../types.js";
+import { CUSTOMIZABLE_AGENTS } from "./registry.js";
 
 // Default pools configuration - will be extended with config file support
 const DEFAULT_POOLS: Pool[] = [
@@ -7,29 +8,13 @@ const DEFAULT_POOLS: Pool[] = [
     id: "claude-default",
     name: "Claude Default",
     model: "claude-sonnet-4-20250514",
-    agents: [
-      {
-        id: "claude-code",
-        name: "Claude Code CLI",
-        type: "claude-code",
-        command: "claude",
-        envToUnset: CLAUDE_CODE_ENV_KEYS,
-      },
-    ],
+    agents: CUSTOMIZABLE_AGENTS,
   },
   {
     id: "claude-fast",
     name: "Claude Fast",
     model: "claude-haiku-3",
-    agents: [
-      {
-        id: "claude-code",
-        name: "Claude Code CLI",
-        type: "claude-code",
-        command: "claude",
-        envToUnset: CLAUDE_CODE_ENV_KEYS,
-      },
-    ],
+    agents: CUSTOMIZABLE_AGENTS,
   },
 ];
 
@@ -85,8 +70,19 @@ export class PoolService {
       }
 
       const body = (await res.json()) as ModelsResponse;
+      // maxplus.models groups ids by wire protocol (messages,
+      // chat_completions, responses, …) — invert it for per-model lookup.
+      const caps = new Map<string, string[]>();
+      for (const [api, ids] of Object.entries(body.maxplus?.models ?? {})) {
+        for (const id of ids) caps.set(id, [...(caps.get(id) ?? []), api]);
+      }
       for (const m of body.data ?? []) {
-        models.push({ id: m.id, displayName: m.display_name, type: m.type });
+        models.push({
+          id: m.id,
+          displayName: m.display_name,
+          type: m.type,
+          apis: caps.get(m.id),
+        });
       }
 
       if (!body.has_more || !body.last_id) break;
@@ -97,16 +93,16 @@ export class PoolService {
   }
 
   /**
-   * Build selectable Pool entries from remote models. Remote models share
-   * the Claude Code agent (env unset + primary API key injection) since
-   * the catalogue is Claude-family.
+   * Build selectable Pool entries from remote models. Every MaxPlus model
+   * is reachable through all registered agent CLIs; the wire protocol is
+   * resolved per model (see RemoteModel.apis).
    */
   poolsFromRemoteModels(models: RemoteModel[]): Pool[] {
     return models.map((m) => ({
       id: `remote:${m.id}`,
       name: m.displayName ?? m.id,
       model: m.id,
-      agents: DEFAULT_POOLS[0].agents,
+      agents: CUSTOMIZABLE_AGENTS,
     }));
   }
 
@@ -119,7 +115,13 @@ export class PoolService {
     apiKey?: string;
     baseUrl?: string;
     onProgress?: (msg: string) => void;
-  }): Promise<{ pools: Pool[]; source: "remote" | "local"; error?: string }> {
+  }): Promise<{
+    pools: Pool[];
+    source: "remote" | "local";
+    error?: string;
+    /** Raw catalogue (with wire capabilities) when source is "remote". */
+    models?: RemoteModel[];
+  }> {
     if (!opts.apiKey) {
       return { pools: this.pools, source: "local" };
     }
@@ -137,7 +139,11 @@ export class PoolService {
           error: "API returned no models",
         };
       }
-      return { pools: this.poolsFromRemoteModels(models), source: "remote" };
+      return {
+        pools: this.poolsFromRemoteModels(models),
+        source: "remote",
+        models,
+      };
     } catch (err) {
       return {
         pools: this.pools,

@@ -1,7 +1,7 @@
 # maxplus-ai-switch-pools
 
-CLI for switching AI pools / models and configuring agent CLIs (Claude Code and
-friends) to talk to the **MaxPlus AI** gateway — with one primary API key that
+CLI for switching AI pools / models and configuring agent CLIs (Claude Code,
+Oh My Pi) to talk to the **MaxPlus AI** gateway — with one primary API key that
 works across every agent.
 
 ```
@@ -21,7 +21,7 @@ $ maxplus-ai
 ## Features
 
 - **Interactive by default** — running `maxplus-ai` with no arguments opens the
-  "Customize which agents CLI?" menu (currently Claude Code, plus Settings).
+  "Customize which agents CLI?" menu (Claude Code, Oh My Pi, plus Settings).
 - **Clean environment per launch** — inherited Anthropic/proxy credentials
   (`ANTHROPIC_BASE_URL`, `ANTHROPIC_API_KEY`, `ANTHROPIC_AUTH_TOKEN`,
   `ANTHROPIC_TOKEN`, `CLAUDE_CODE_OAUTH_TOKEN`) are unset first, so the agent
@@ -30,6 +30,10 @@ $ maxplus-ai
   exported into the env vars each agent type reads (`ANTHROPIC_API_KEY` for
   Claude Code, `OPENAI_API_KEY` for OpenAI CLIs, …). New agents added to the
   registry inherit this automatically.
+- **Oh My Pi model sync** — every selection rewrites the `maxplus` provider in
+  `~/.omp/agent/models.yml` with the live pool catalogue, choosing
+  `anthropic-messages` when a model serves `/v1/messages` and its supported
+  wire otherwise; the key itself stays off disk (`MAXPLUS_API_KEY` env).
 - **Live model catalogue** — pools are fetched from the MaxPlus API
   (`GET /v1/models`, Bearer auth, cursor pagination). If the API is
   unreachable, falls back to built-in local pools with a warning.
@@ -70,6 +74,7 @@ maxplus-ai settings             # edit API key / base URL
 maxplus-ai list                 # list models from the MaxPlus API
 maxplus-ai list --local         # list built-in local pools only
 maxplus-ai run -p <pool-id>     # launch an agent against a pool directly
+maxplus-ai run -a omp           # choose the agent CLI (claude-code, omp)
 maxplus-ai run -m <model>       # override the model
 maxplus-ai run -- <args...>     # pass extra args to the agent CLI
 ```

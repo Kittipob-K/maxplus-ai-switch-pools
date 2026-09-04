@@ -5,6 +5,7 @@ import { AgentService } from "../services/agent.js";
 import { SettingsService } from "../services/settings.js";
 import { ensurePrerequisites } from "../services/prereq.js";
 import { ClaudeConfigService } from "../services/claude-config.js";
+import { OmpConfigService } from "../services/omp-config.js";
 import { DEFAULT_MODELS_BASE_URL } from "../types.js";
 import type { AgentType, RunOptions } from "../types.js";
 import * as ui from "../ui.js";
@@ -13,7 +14,7 @@ export const runCommand = new Command("run")
   .description("Run an AI agent with selected pool/model")
   .option("-p, --pool <id>", "Pool ID to use")
   .option("-m, --model <model>", "Model name to use")
-  .option("-a, --agent <type>", "Agent type (claude-code, openai, custom)")
+  .option("-a, --agent <type>", "Agent type (claude-code, omp, openai, custom)")
   .argument("[args...]", "Additional arguments to pass to the agent")
   .action(async (args: string[], options) => {
     const poolService = new PoolService();
@@ -28,7 +29,7 @@ export const runCommand = new Command("run")
       // Resolve selectable pools: live MaxPlus model list when available,
       // otherwise the built-in local pools.
       const spinner = new ui.Spinner("Fetching models from MaxPlus API");
-      const { pools, source, error } = await poolService.resolvePools({
+      const { pools, source, error, models } = await poolService.resolvePools({
         apiKey: settings.apiKey,
         baseUrl: settings.baseUrl,
       });
@@ -74,6 +75,21 @@ export const runCommand = new Command("run")
       if (!agent) {
         ui.danger("Agent not found");
         process.exit(1);
+      }
+
+      // Oh My Pi needs models.yml on disk (env vars alone don't declare a
+      // custom provider) — refresh it from the live catalogue every run.
+      if (agent.type === "omp" && settings.apiKey) {
+        const endpoint = ClaudeConfigService.endpointFromBaseUrl(
+          settings.baseUrl ?? DEFAULT_MODELS_BASE_URL
+        );
+        const model = options.model ?? pool.model;
+        const written = await new OmpConfigService().apply({
+          endpoint,
+          models: models ?? [{ id: model }],
+          selected: model,
+        });
+        ui.ok(ui.filepath(written));
       }
 
       ui.h2(`🚀 Starting ${agent.name} with model ${pool.model}`);

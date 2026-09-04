@@ -1,5 +1,5 @@
 import type { Agent } from "../types.js";
-import { CLAUDE_CODE_ENV_KEYS } from "../types.js";
+import { CLAUDE_CODE_ENV_KEYS, OMP_ENV_KEYS } from "../types.js";
 
 /**
  * Registry of agent CLIs that can be customized through maxplus-ai.
@@ -15,6 +15,18 @@ export const CUSTOMIZABLE_AGENTS: Agent[] = [
     // credentials so maxplus-ai can manage them explicitly. The primary API key
     // from settings is then injected per-type (see API_KEY_ENV_VARS_BY_TYPE).
     envToUnset: CLAUDE_CODE_ENV_KEYS,
+  },
+  {
+    id: "omp",
+    name: "Oh My Pi",
+    type: "omp",
+    command: "omp",
+    // Inherited Anthropic/proxy vars plus pi/omp config-dir pointers that
+    // would relocate ~/.omp away from the models.yml we write.
+    envToUnset: OMP_ENV_KEYS,
+    // omp's --model selector is provider/modelId; prefix disambiguates the
+    // MaxPlus copy from built-in providers with the same ids.
+    modelPrefix: "maxplus/",
   },
 ];
 

@@ -72,9 +72,9 @@ export class AgentService {
   private buildArgs(agent: Agent, options: RunOptions): string[] {
     const args: string[] = [...(agent.args ?? [])];
 
-    // Add model flag if specified
+    // Add model flag if specified; agent may need a provider prefix.
     if (options.model) {
-      args.push("--model", options.model);
+      args.push("--model", (agent.modelPrefix ?? "") + options.model);
     }
 
     // Add any extra args

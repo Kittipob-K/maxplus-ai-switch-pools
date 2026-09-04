@@ -40,6 +40,8 @@ src/
     pool.ts             PoolService: local pools + MaxPlus /models API (Bearer, pagination)
     agent.ts            AgentService: unset env, export key+base URL, spawn agent
     claude-config.ts    installer-parity writes of ~/.claude.json + ~/.claude/settings.json
+    omp-config.ts       merge-write ~/.omp/agent/models.yml (per-model wire api
+                        from MaxPlus /models capabilities)
     registry.ts         CUSTOMIZABLE_AGENTS registry (add new agent CLIs here)
 ```
 

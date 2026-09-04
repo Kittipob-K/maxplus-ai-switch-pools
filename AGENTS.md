@@ -35,7 +35,8 @@ src/
     run.ts              non-interactive launch: maxplus-ai run [-p pool] [-m model] [-- args]
     list.ts             model list (remote, --local fallback)
   services/
-    settings.ts         SettingsService: read/write ~/.config/maxplus-ai/settings.json
+    settings.ts         SettingsService: Credential Store — keychain-first API key + ~/.config/maxplus-ai/settings.json
+    keychain.ts         openKeychain(): OS keychain entry (service maxplus-ai, account = username); null when unavailable/disabled
     prereq.ts           ensurePrerequisites(): inline prompts for missing baseUrl/apiKey
     pool.ts             PoolService: local pools + MaxPlus /models API (Bearer, pagination)
     agent.ts            AgentService: prepare launch plan, clean env, spawn agent
@@ -97,6 +98,10 @@ real config:
 - Point settings elsewhere: `export XDG_CONFIG_HOME=$(mktemp -d)` **before**
   writing any test settings file (past mistake: a test seeded the real
   `~/.config/maxplus-ai/settings.json`).
+- Set `MAXPLUS_DISABLE_KEYCHAIN=1` in any process that exercises settings —
+  HOME/XDG redirection does **not** isolate the OS keychain, and tests must not
+  touch (or prompt against) the developer's real one. Unit-test keychain
+  behavior by passing a fake `{ keychain }` to `SettingsService`.
 - Fake HOME + a stub `claude` shell script on `PATH` that echoes received
   env/args, to assert what the spawn actually gets.
 - Mock the models API with a tiny `node:http` server on `localhost:9099`
@@ -110,7 +115,7 @@ real config:
 - Binary name is **`maxplus-ai`** everywhere (package.json `bin`, help text,
   docs). The old name `masp` must not reappear.
 - Settings/config paths always honor `XDG_CONFIG_HOME` and are created `0700`
-  / files `0600` (secrets live there).
+  / files `0600` (the fallback home for the API key; keychain-first per ADR 0001).
 - `dist/`, `node_modules/`, `.recall/`, `.DS_Store` are git-ignored; don't
   commit build output.
 - Conventional commits (`feat:` / `fix:` / `chore:`), small focused commits.

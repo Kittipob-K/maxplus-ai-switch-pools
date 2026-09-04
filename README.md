@@ -127,18 +127,21 @@ malformed existing config.
 ## Configuration
 
 Settings live at `${XDG_CONFIG_HOME:-~/.config}/maxplus-ai/settings.json`
-(created with `0600` permissions, key shown masked everywhere):
+(created with `0600` permissions, key shown masked everywhere). The primary API
+key prefers the OS **keychain** (macOS Keychain, Linux Secret Service, Windows
+Credential Manager); the settings file is the fallback home on systems with no
+usable keychain (headless, CI) and a key found there migrates to the keychain
+automatically. Set `MAXPLUS_DISABLE_KEYCHAIN=1` to force file-only storage:
 
 ```json
 {
-  "apiKey": "ccsk-…",
   "baseUrl": "https://api.maxplus-ai.cc/v1"
 }
 ```
 
 | Field     | Purpose                                                              |
 | --------- | -------------------------------------------------------------------- |
-| `apiKey`  | Primary API key — Bearer token for the models API and exported to every agent CLI. |
+| `apiKey`  | Primary API key — Bearer token for the models API and exported to every agent CLI. Present in this file only on keychain-less systems; otherwise the key lives in the OS keychain. |
 | `baseUrl` | MaxPlus models endpoint including `/v1`; maxplus-ai normalizes it for each agent's protocol. Default: `https://api.maxplus-ai.cc/v1`. |
 
 ## Verification

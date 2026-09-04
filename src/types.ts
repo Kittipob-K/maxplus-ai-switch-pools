@@ -108,7 +108,12 @@ export function baseUrlEnvVarsFor(agent: Agent): readonly string[] {
 
 /** User settings persisted in ~/.config/maxplus-ai/settings.json */
 export interface Settings {
-  /** Primary API key injected into every agent CLI that reads a key from env. */
+  /**
+   * Primary API key injected into every agent CLI that reads a key from env.
+   * The Credential Store (OS keychain) is authoritative at rest: SettingsService
+   * returns it from the keychain when available and persists it there, using
+   * this file only as the fallback location on systems with no usable keychain.
+   */
   apiKey?: string;
   /** Base URL of the MaxPlus models API. Default: https://api.maxplus-ai.cc/v1 */
   baseUrl?: string;

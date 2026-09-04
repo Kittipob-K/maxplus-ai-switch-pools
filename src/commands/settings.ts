@@ -37,14 +37,9 @@ export async function runSettingsMenu(): Promise<void> {
 
   if (action === "back") return;
 
-  const next = { ...settings };
-  if (action === "clear-key") {
-    delete next.apiKey;
-    await settingsService.save(next);
-    ui.warn("API key cleared.");
-    return;
-  }
-
+  // URL-only edits keep the loaded settings (whose apiKey is the effective
+  // one from the Credential Store) and write through save(); key changes go
+  // through setApiKey() so the store is updated directly.
   if (action === "set-url") {
     const url = await input({
       message: "Base URL:",
@@ -58,18 +53,27 @@ export async function runSettingsMenu(): Promise<void> {
         }
       },
     });
-    next.baseUrl = url.trim();
-    await settingsService.save(next);
-    ui.ok(`Base URL saved: ${next.baseUrl}`);
+    await settingsService.save({ ...settings, baseUrl: url.trim() });
+    ui.ok(`Base URL saved: ${url.trim()}`);
     ui.muted(`  ${ui.filepath(settingsService.filePath)}`);
     return;
   }
 
+  if (action === "clear-key") {
+    await settingsService.setApiKey(undefined);
+    ui.warn("API key cleared.");
+    return;
+  }
+
   const key = await editApiKey();
-  next.apiKey = key;
-  await settingsService.save(next);
+  await settingsService.setApiKey(key);
   ui.ok(`API key saved (${SettingsService.maskKey(key)})`);
-  ui.muted(`  ${ui.filepath(settingsService.filePath)}`);
+  if (settingsService.lastCredentialLocation === "keychain") {
+    ui.muted(`  Stored in the OS keychain. If macOS asks about keychain access, choose "Always Allow".`);
+  } else {
+    ui.muted(`  ${ui.filepath(settingsService.filePath)}`);
+  }
+  ui.muted(`  Launch each agent once via maxplus-ai to propagate the new key to its config.`);
 }
 
 export const settingsCommand = new Command("settings")

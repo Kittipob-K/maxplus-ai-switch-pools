@@ -64,7 +64,11 @@ export async function ensurePrerequisites(
 
   if (changed) {
     await settingsService.save(settings);
-    ui.ok(`Saved to ${settingsService.filePath}`);
+    ui.ok(
+      settingsService.lastCredentialLocation === "keychain"
+        ? "Saved to the OS keychain."
+        : `Saved to ${settingsService.filePath}`
+    );
   }
 
   return settings;

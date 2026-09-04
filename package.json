@@ -30,6 +30,7 @@
   "license": "MIT",
   "dependencies": {
     "@inquirer/prompts": "^7.2.0",
+    "@napi-rs/keyring": "^2.0.0",
     "chalk": "^5.4.1",
     "commander": "^12.1.0",
     "yaml": "^2.9.0"

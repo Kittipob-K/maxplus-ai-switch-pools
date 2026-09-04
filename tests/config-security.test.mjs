@@ -33,7 +33,7 @@ test("Pi config merge is secret-free and uses private permissions", async () => 
 test("Settings save enforces private file permissions", async () => {
   const directory = await mkdtemp(join(tmpdir(), "maxplus-settings-"));
   const filePath = join(directory, "maxplus-ai", "settings.json");
-  const settings = new SettingsService(filePath);
+  const settings = new SettingsService(filePath, { keychain: null });
 
   await settings.save({ apiKey: "test-key", baseUrl: "https://example.com/v1" });
 

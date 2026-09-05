@@ -30,9 +30,36 @@ test("OpenCode config preserves other providers and references the key from env"
     config.provider.maxplus.options.baseURL,
     "https://gateway.example.com/v1"
   );
-  assert.equal(config.$schema, "https://opencode.ai/config.json");
+  assert.equal(config.$schema, undefined);
   assert.deepEqual(Object.keys(config.provider.maxplus.models), ["chat-model"]);
   assert.equal(JSON.stringify(config).includes("test-key"), false);
+});
+
+test("OpenCode config adds the schema only when it creates the file", async () => {
+  const directory = await mkdtemp(join(tmpdir(), "maxplus-opencode-"));
+  const configPath = join(directory, "opencode.json");
+
+  await new OpenCodeConfigService(configPath).apply({
+    endpoint: "https://gateway.example.com",
+    models: [{ id: "chat-model", apis: ["chat_completions"] }],
+    selected: "chat-model",
+  });
+
+  const config = JSON.parse(await readFile(configPath, "utf8"));
+  assert.equal(config.$schema, "https://opencode.ai/config.json");
+  assert.deepEqual(Object.keys(config.provider.maxplus.models), ["chat-model"]);
+
+  await writeFile(configPath, JSON.stringify({ theme: "dark" }));
+
+  await new OpenCodeConfigService(configPath).apply({
+    endpoint: "https://gateway.example.com",
+    models: [{ id: "chat-model", apis: ["chat_completions"] }],
+    selected: "chat-model",
+  });
+
+  const untouchedSchema = JSON.parse(await readFile(configPath, "utf8"));
+  assert.equal(untouchedSchema.$schema, undefined);
+  assert.equal(untouchedSchema.theme, "dark");
 });
 
 test("OpenCode config adds new models without dropping existing model settings", async () => {

@@ -28,12 +28,14 @@ export class OpenCodeConfigService {
 
   async apply(input: OpenCodeConfigInput): Promise<string> {
     let document: Record<string, unknown> = {};
+    let existed = false;
     try {
       const parsed: unknown = JSON.parse(stripJsonComments(await readFile(this.configPath, "utf8")));
       if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
         throw new Error("config root must be an object");
       }
       document = parsed as Record<string, unknown>;
+      existed = true;
     } catch (error) {
       if ((error as NodeJS.ErrnoException).code !== "ENOENT") {
         throw new Error(`${this.configPath} is not valid JSON/JSONC - fix it before switching pools`);
@@ -102,7 +104,11 @@ export class OpenCodeConfigService {
     };
 
     const output: Record<string, unknown> = { ...document, provider: providers };
-    if (typeof output.$schema !== "string") output.$schema = OPEN_CODE_SCHEMA_URL;
+    // Opencode's schema sets additionalProperties: false on Config and
+    // ProviderConfig, so injecting $schema into a pre-existing file would make
+    // the editor flag the user's own unrelated keys. Only seed it for a file we
+    // create from scratch.
+    if (!existed) output.$schema = OPEN_CODE_SCHEMA_URL;
 
     await writeSecureFile(
       this.configPath,

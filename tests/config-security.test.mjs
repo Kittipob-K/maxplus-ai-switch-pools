@@ -8,6 +8,7 @@ import { PiConfigService } from "../dist/services/pi-config.js";
 import { SettingsService } from "../dist/services/settings.js";
 import { ClaudeConfigService } from "../dist/services/claude-config.js";
 import { OmpConfigService } from "../dist/services/omp-config.js";
+import { OpenCodeConfigService } from "../dist/services/opencode-config.js";
 
 test("Pi config merge is secret-free and uses private permissions", async () => {
   const directory = await mkdtemp(join(tmpdir(), "maxplus-pi-"));
@@ -92,3 +93,41 @@ test("OMP config refuses an invalid providers value", async () => {
   );
   assert.equal(await readFile(modelsPath, "utf8"), "providers: invalid\n");
 });
+
+async function applyOpenCode(configPath) {
+  return new OpenCodeConfigService(configPath).apply({
+    endpoint: "https://example.com",
+    models: [{ id: "model", apis: ["chat_completions"] }],
+    selected: "model",
+  });
+}
+
+async function openCodeCase(seed, expectedMessage) {
+  const directory = await mkdtemp(join(tmpdir(), "maxplus-opencode-"));
+  const configPath = join(directory, "opencode.json");
+  await writeFile(configPath, seed);
+
+  await assert.rejects(applyOpenCode(configPath), expectedMessage);
+  assert.equal(await readFile(configPath, "utf8"), seed);
+}
+
+test("OpenCode config refuses a malformed provider value", () =>
+  openCodeCase('{"provider":"invalid"}', /invalid provider object/));
+
+test("OpenCode config refuses a malformed maxplus provider value", () =>
+  openCodeCase('{"provider":{"maxplus":"invalid"}}', /invalid maxplus provider object/));
+
+test("OpenCode config refuses a malformed maxplus options value", () =>
+  openCodeCase('{"provider":{"maxplus":{"options":[]}}}', /invalid maxplus options object/));
+
+test("OpenCode config refuses a malformed maxplus models value", () =>
+  openCodeCase('{"provider":{"maxplus":{"models":"invalid"}}}', /invalid maxplus models object/));
+
+test("OpenCode config refuses a malformed entry for a catalogue model", () =>
+  openCodeCase(
+    '{"provider":{"maxplus":{"models":{"model":"invalid"}}}}',
+    /invalid maxplus model configuration for model/
+  ));
+
+test("OpenCode config refuses to overwrite malformed JSON", () =>
+  openCodeCase("{ malformed", /is not valid JSON/));

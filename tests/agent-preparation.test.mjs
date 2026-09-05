@@ -137,3 +137,61 @@ test("OpenCode config adds new models without dropping existing model settings",
     "old-model",
   ]);
 });
+
+test("OpenCode config resolves the model name from displayName, then the saved name, then the id", async () => {
+  const directory = await mkdtemp(join(tmpdir(), "maxplus-opencode-"));
+  const configPath = join(directory, "opencode.json");
+  await writeFile(
+    configPath,
+    JSON.stringify({
+      provider: {
+        maxplus: {
+          models: {
+            "renamed-model": { name: "User edited label", limit: { context: 100000 } },
+          },
+        },
+      },
+    })
+  );
+
+  await new OpenCodeConfigService(configPath).apply({
+    endpoint: "https://gateway.example.com",
+    models: [
+      { id: "renamed-model", apis: ["chat_completions"] },
+      { id: "gateway-named", displayName: "Gateway name", apis: ["chat_completions"] },
+      { id: "unlabeled", apis: ["chat_completions"] },
+    ],
+    selected: "renamed-model",
+  });
+
+  const models = JSON.parse(await readFile(configPath, "utf8")).provider.maxplus.models;
+  assert.equal(models["renamed-model"].name, "User edited label");
+  assert.deepEqual(models["renamed-model"].limit, { context: 100000 });
+  assert.equal(models["gateway-named"].name, "Gateway name");
+  assert.equal(models["unlabeled"].name, "unlabeled");
+});
+
+test("OpenCode config leaves entries outside the catalogue untouched", async () => {
+  const directory = await mkdtemp(join(tmpdir(), "maxplus-opencode-"));
+  const configPath = join(directory, "opencode.json");
+  await writeFile(
+    configPath,
+    JSON.stringify({
+      provider: {
+        maxplus: { models: { "stray-null": null, "stray-string": "kept" } },
+      },
+    })
+  );
+
+  const result = await new OpenCodeConfigService(configPath).apply({
+    endpoint: "https://gateway.example.com",
+    models: [{ id: "model", apis: ["chat_completions"] }],
+    selected: "model",
+  });
+
+  assert.deepEqual(result.staleModels, ["stray-null", "stray-string"]);
+  const models = JSON.parse(await readFile(configPath, "utf8")).provider.maxplus.models;
+  assert.equal(models["stray-null"], null);
+  assert.equal(models["stray-string"], "kept");
+  assert.deepEqual(models.model, { name: "model" });
+});

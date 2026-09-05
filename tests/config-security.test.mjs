@@ -94,20 +94,19 @@ test("OMP config refuses an invalid providers value", async () => {
   assert.equal(await readFile(modelsPath, "utf8"), "providers: invalid\n");
 });
 
-async function applyOpenCode(configPath) {
-  return new OpenCodeConfigService(configPath).apply({
-    endpoint: "https://example.com",
-    models: [{ id: "model", apis: ["chat_completions"] }],
-    selected: "model",
-  });
-}
-
 async function openCodeCase(seed, expectedMessage) {
   const directory = await mkdtemp(join(tmpdir(), "maxplus-opencode-"));
   const configPath = join(directory, "opencode.json");
   await writeFile(configPath, seed);
 
-  await assert.rejects(applyOpenCode(configPath), expectedMessage);
+  await assert.rejects(
+    new OpenCodeConfigService(configPath).apply({
+      endpoint: "https://example.com",
+      models: [{ id: "model", apis: ["chat_completions"] }],
+      selected: "model",
+    }),
+    expectedMessage
+  );
   assert.equal(await readFile(configPath, "utf8"), seed);
 }
 

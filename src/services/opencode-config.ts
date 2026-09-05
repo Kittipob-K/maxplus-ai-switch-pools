@@ -18,6 +18,17 @@ export interface OpenCodeConfigInput {
   selected: string;
 }
 
+export interface OpenCodeConfigResult {
+  /** Path of the opencode.json file written. */
+  path: string;
+  /**
+   * Model ids kept from a previous write because they are no longer in the
+   * MaxPlus catalogue. Opencode will still offer them and requests against
+   * them will fail, so callers should surface these to the user.
+   */
+  staleModels: string[];
+}
+
 export class OpenCodeConfigService {
   readonly configPath: string;
 
@@ -26,7 +37,7 @@ export class OpenCodeConfigService {
     this.configPath = configPath ?? join(configBase, "opencode", "opencode.json");
   }
 
-  async apply(input: OpenCodeConfigInput): Promise<string> {
+  async apply(input: OpenCodeConfigInput): Promise<OpenCodeConfigResult> {
     let document: Record<string, unknown> = {};
     let existed = false;
     try {
@@ -87,8 +98,14 @@ export class OpenCodeConfigService {
           (typeof existingModel?.name === "string" ? existingModel.name : model.id),
       };
     }
+    const staleModels: string[] = [];
     for (const [modelId, modelConfig] of Object.entries(existingModels ?? {})) {
-      if (!Object.hasOwn(mergedModels, modelId)) mergedModels[modelId] = modelConfig;
+      if (Object.hasOwn(mergedModels, modelId)) continue;
+      // Preserve models the gateway no longer serves so a renamed/removed pool
+      // never drops a configuration the user set up by hand; staleModels
+      // surfaces them to the caller instead of keeping them silently.
+      staleModels.push(modelId);
+      mergedModels[modelId] = modelConfig;
     }
 
     providers[OPEN_CODE_PROVIDER_ID] = {
@@ -114,6 +131,6 @@ export class OpenCodeConfigService {
       this.configPath,
       `${JSON.stringify(output, null, 2)}\n`
     );
-    return this.configPath;
+    return { path: this.configPath, staleModels };
   }
 }

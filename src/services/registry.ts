@@ -10,6 +10,7 @@ import { ClaudeConfigService } from "./claude-config.js";
 import { OmpConfigService } from "./omp-config.js";
 import { OpenCodeConfigService } from "./opencode-config.js";
 import { PiConfigService } from "./pi-config.js";
+import * as ui from "../ui.js";
 
 /**
  * Registry of agent CLIs that can be customized through maxplus-ai.
@@ -85,9 +86,19 @@ export const CUSTOMIZABLE_AGENTS: Agent[] = [
     envToUnset: ["MAXPLUS_API_KEY", ...OPENAI_COMPATIBLE_ENV_KEYS],
     modelPrefix: "maxplus/",
     supportedProtocols: ["chat_completions"],
-    prepare: async ({ endpoint, models, selected }) => [
-      await new OpenCodeConfigService().apply({ endpoint, models, selected }),
-    ],
+    prepare: async ({ endpoint, models, selected }) => {
+      const result = await new OpenCodeConfigService().apply({
+        endpoint,
+        models,
+        selected,
+      });
+      for (const modelId of result.staleModels) {
+        ui.warn(
+          `stale MaxPlus model ${ui.val(`maxplus/${modelId}`)} kept in opencode.json - the gateway no longer serves it; remove it from the file to prune`
+        );
+      }
+      return [result.path];
+    },
     installUrl: "https://opencode.ai/docs/",
   },
   {

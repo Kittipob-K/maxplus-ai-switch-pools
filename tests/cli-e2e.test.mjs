@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { chmod, mkdtemp, mkdir, readFile, writeFile } from "node:fs/promises";
 import http from "node:http";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import { spawn } from "node:child_process";
 import test from "node:test";
 
@@ -200,6 +200,33 @@ test("run syncs OpenCode without storing the primary key", async (context) => {
   const raw = await readFile(join(fixture.configDir, "opencode", "opencode.json"), "utf8");
   assert.equal(raw.includes("e2e-key"), false);
   assert.equal(JSON.parse(raw).provider.maxplus.options.apiKey, "{env:MAXPLUS_API_KEY}");
+});
+
+test("run warns about OpenCode models the gateway no longer serves", async (context) => {
+  const fixture = await createFixture(context);
+  await writeCaptureStub(fixture.binDir, "opencode");
+  const opencodeConfigPath = join(fixture.configDir, "opencode", "opencode.json");
+  await mkdir(dirname(opencodeConfigPath), { recursive: true });
+  await writeFile(
+    opencodeConfigPath,
+    JSON.stringify({
+      provider: {
+        maxplus: { models: { "retired-model": { name: "Retired model" } } },
+      },
+    })
+  );
+
+  const result = await run(
+    process.execPath,
+    ["dist/index.js", "run", "-a", "opencode", "-p", "remote:chat-model"],
+    { cwd: process.cwd(), env: fixtureEnv(fixture), stdio: ["ignore", "pipe", "pipe"] }
+  );
+
+  assert.equal(result.code, 0, result.stderr || result.stdout);
+  assert.match(result.stdout, /retired-model/);
+  assert.match(result.stdout, /kept in opencode\.json/);
+  const config = JSON.parse(await readFile(opencodeConfigPath, "utf8"));
+  assert.equal(config.provider.maxplus.models["retired-model"].name, "Retired model");
 });
 
 test("run launches Codex with Responses provider overrides", async (context) => {

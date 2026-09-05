@@ -14,7 +14,7 @@ test("OpenCode config preserves other providers and references the key from env"
     JSON.stringify({ provider: { existing: { name: "Existing" } } })
   );
 
-  await new OpenCodeConfigService(configPath).apply({
+  const result = await new OpenCodeConfigService(configPath).apply({
     endpoint: "https://gateway.example.com",
     models: [
       { id: "chat-model", apis: ["chat_completions"] },
@@ -22,6 +22,7 @@ test("OpenCode config preserves other providers and references the key from env"
     ],
     selected: "chat-model",
   });
+  assert.deepEqual(result.staleModels, []);
 
   const config = JSON.parse(await readFile(configPath, "utf8"));
   assert.equal(config.provider.existing.name, "Existing");
@@ -39,11 +40,12 @@ test("OpenCode config adds the schema only when it creates the file", async () =
   const directory = await mkdtemp(join(tmpdir(), "maxplus-opencode-"));
   const configPath = join(directory, "opencode.json");
 
-  await new OpenCodeConfigService(configPath).apply({
+  const created = await new OpenCodeConfigService(configPath).apply({
     endpoint: "https://gateway.example.com",
     models: [{ id: "chat-model", apis: ["chat_completions"] }],
     selected: "chat-model",
   });
+  assert.deepEqual(created.staleModels, []);
 
   const config = JSON.parse(await readFile(configPath, "utf8"));
   assert.equal(config.$schema, "https://opencode.ai/config.json");
@@ -91,7 +93,7 @@ test("OpenCode config adds new models without dropping existing model settings",
     })
   );
 
-  await new OpenCodeConfigService(configPath).apply({
+  const result = await new OpenCodeConfigService(configPath).apply({
     endpoint: "https://gateway.example.com",
     models: [
       { id: "new-model", displayName: "New model", apis: ["chat_completions"] },
@@ -100,6 +102,8 @@ test("OpenCode config adds new models without dropping existing model settings",
     ],
     selected: "new-model",
   });
+  assert.equal(result.path, configPath);
+  assert.deepEqual(result.staleModels, ["old-model"]);
 
   const config = JSON.parse(await readFile(configPath, "utf8"));
   assert.equal(config.provider.existing.name, "Existing");
@@ -118,11 +122,12 @@ test("OpenCode config adds new models without dropping existing model settings",
   assert.deepEqual(config.provider.maxplus.models["old-model"].limit, { context: 100000 });
   assert.equal(config.provider.maxplus.models["responses-model"], undefined);
 
-  await new OpenCodeConfigService(configPath).apply({
+  const second = await new OpenCodeConfigService(configPath).apply({
     endpoint: "https://gateway.example.com",
     models: [{ id: "another-model", apis: ["chat_completions"] }],
     selected: "another-model",
   });
+  assert.deepEqual(second.staleModels, ["new-model", "shared-model", "old-model"]);
 
   const updated = JSON.parse(await readFile(configPath, "utf8"));
   assert.deepEqual(Object.keys(updated.provider.maxplus.models), [

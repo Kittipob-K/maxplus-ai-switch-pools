@@ -195,3 +195,111 @@ test("OpenCode config leaves entries outside the catalogue untouched", async () 
   assert.equal(models["stray-string"], "kept");
   assert.deepEqual(models.model, { name: "model" });
 });
+
+test("OpenCode config keeps a model that only serves another wire without calling it retired", async () => {
+  const directory = await mkdtemp(join(tmpdir(), "maxplus-opencode-"));
+  const configPath = join(directory, "opencode.json");
+  await writeFile(
+    configPath,
+    JSON.stringify({
+      provider: {
+        maxplus: { models: { "messages-only": { name: "Messages only" } } },
+      },
+    })
+  );
+
+  const result = await new OpenCodeConfigService(configPath).apply({
+    endpoint: "https://gateway.example.com",
+    models: [
+      { id: "messages-only", apis: ["messages"] },
+      { id: "chat-model", apis: ["chat_completions"] },
+    ],
+    selected: "chat-model",
+  });
+
+  // The gateway still serves "messages-only"; opencode just cannot reach it.
+  assert.deepEqual(result.staleModels, []);
+  const models = JSON.parse(await readFile(configPath, "utf8")).provider.maxplus.models;
+  assert.deepEqual(models["messages-only"], { name: "Messages only" });
+  assert.equal(models["chat-model"].name, "chat-model");
+});
+
+test("OpenCode config skips retired-model reporting when the gateway catalogue is unknown", async () => {
+  const directory = await mkdtemp(join(tmpdir(), "maxplus-opencode-"));
+  const configPath = join(directory, "opencode.json");
+  await writeFile(
+    configPath,
+    JSON.stringify({
+      provider: {
+        maxplus: {
+          models: {
+            "saved-a": { name: "A" },
+            "saved-b": { name: "B" },
+          },
+        },
+      },
+    })
+  );
+
+  // No capabilities means the models API was unreachable and maxplus-ai fell
+  // back to its built-in pools, so the catalogue cannot prove anything is gone.
+  const result = await new OpenCodeConfigService(configPath).apply({
+    endpoint: "https://gateway.example.com",
+    models: [{ id: "local-model" }],
+    selected: "local-model",
+  });
+
+  assert.deepEqual(result.staleModels, []);
+  const models = JSON.parse(await readFile(configPath, "utf8")).provider.maxplus.models;
+  assert.equal(models["saved-a"].name, "A");
+  assert.equal(models["saved-b"].name, "B");
+});
+
+test("OpenCode config keeps a saved label when the gateway sends an empty displayName", async () => {
+  const directory = await mkdtemp(join(tmpdir(), "maxplus-opencode-"));
+  const configPath = join(directory, "opencode.json");
+  await writeFile(
+    configPath,
+    JSON.stringify({
+      provider: {
+        maxplus: { models: { "blank-name": { name: "Saved label" } } },
+      },
+    })
+  );
+
+  await new OpenCodeConfigService(configPath).apply({
+    endpoint: "https://gateway.example.com",
+    models: [{ id: "blank-name", displayName: "", apis: ["chat_completions"] }],
+    selected: "blank-name",
+  });
+
+  const models = JSON.parse(await readFile(configPath, "utf8")).provider.maxplus.models;
+  assert.equal(models["blank-name"].name, "Saved label");
+});
+
+test("OpenCode config keeps a pre-existing $schema value", async () => {
+  const directory = await mkdtemp(join(tmpdir(), "maxplus-opencode-"));
+  const configPath = join(directory, "opencode.json");
+  await writeFile(
+    configPath,
+    JSON.stringify({
+      $schema: "https://opencode.ai/config.json",
+      provider: {},
+    })
+  );
+
+  await new OpenCodeConfigService(configPath).apply({
+    endpoint: "https://gateway.example.com",
+    models: [{ id: "chat-model", apis: ["chat_completions"] }],
+    selected: "chat-model",
+  });
+
+  assert.equal(
+    (await readFile(configPath, "utf8")).includes("https://opencode.ai/config.json"),
+    true
+  );
+  assert.equal(
+    JSON.parse(await readFile(configPath, "utf8")).$schema,
+    "https://opencode.ai/config.json"
+  );
+});

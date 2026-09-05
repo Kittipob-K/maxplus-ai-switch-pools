@@ -7,6 +7,7 @@ import { writeSecureFile } from "./secure-file.js";
 
 const OPEN_CODE_SCHEMA_URL = "https://opencode.ai/config.json";
 const OPEN_CODE_PROVIDER_ID = "maxplus";
+const FIX_HINT = " - fix it manually before switching pools";
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === "object" && !Array.isArray(value);
@@ -22,17 +23,19 @@ export interface OpenCodeConfigResult {
   /** Path of the opencode.json file written. */
   path: string;
   /**
-   * Model ids kept from a previous write because they are no longer in the
-   * MaxPlus catalogue. Opencode will still offer them and requests against
-   * them will fail, so callers should surface these to the user.
+   * Model ids kept from a previous write because the live MaxPlus catalogue no
+   * longer lists them. Opencode still offers them and requests against them
+   * fail, so callers should surface these to the user. Empty when the
+   * catalogue was not live (models API unreachable), since then absence is not
+   * evidence.
    */
   staleModels: string[];
 }
 
 /**
  * Merge-writes provider.maxplus in opencode.json, keeping the user's other
- * providers, options and hand-tuned model entries. Only the live MaxPlus
- * catalogue and our options are replaced, so a gateway rename never erases a
+ * providers, extra options and hand-tuned model entries. Only the live MaxPlus
+ * catalogue and baseURL/apiKey are replaced, so a gateway rename never erases a
  * limit the user set by hand.
  */
 export class OpenCodeConfigService {
@@ -55,17 +58,13 @@ export class OpenCodeConfigService {
       existed = true;
     } catch (error) {
       if ((error as NodeJS.ErrnoException).code !== "ENOENT") {
-        throw new Error(
-          `${this.configPath} is not valid JSON/JSONC - fix it manually before switching pools`
-        );
+        throw new Error(`${this.configPath} is not valid JSON/JSONC${FIX_HINT}`);
       }
     }
 
     const existingProviders = document.provider;
     if (existingProviders !== undefined && !isRecord(existingProviders)) {
-      throw new Error(
-        `${this.configPath} has an invalid provider object - fix it manually before switching pools`
-      );
+      throw new Error(`${this.configPath} has an invalid provider object${FIX_HINT}`);
     }
 
     // Opencode uses only the OpenAI-compatible wire. When the gateway advertises
@@ -83,24 +82,18 @@ export class OpenCodeConfigService {
     const providers = { ...(existingProviders ?? {}) };
     const existingMaxPlus = providers[OPEN_CODE_PROVIDER_ID];
     if (existingMaxPlus !== undefined && !isRecord(existingMaxPlus)) {
-      throw new Error(
-        `${this.configPath} has an invalid maxplus provider object - fix it manually before switching pools`
-      );
+      throw new Error(`${this.configPath} has an invalid maxplus provider object${FIX_HINT}`);
     }
 
     const maxplus = existingMaxPlus ?? {};
     const existingOptions = maxplus.options;
     if (existingOptions !== undefined && !isRecord(existingOptions)) {
-      throw new Error(
-        `${this.configPath} has an invalid maxplus options object - fix it manually before switching pools`
-      );
+      throw new Error(`${this.configPath} has an invalid maxplus options object${FIX_HINT}`);
     }
 
     const existingModels = maxplus.models;
     if (existingModels !== undefined && !isRecord(existingModels)) {
-      throw new Error(
-        `${this.configPath} has an invalid maxplus models object - fix it manually before switching pools`
-      );
+      throw new Error(`${this.configPath} has an invalid maxplus models object${FIX_HINT}`);
     }
 
     const mergedModels: Record<string, unknown> = {};
@@ -108,27 +101,36 @@ export class OpenCodeConfigService {
       const existingModel = existingModels?.[model.id];
       if (existingModel !== undefined && !isRecord(existingModel)) {
         throw new Error(
-          `${this.configPath} has an invalid maxplus model configuration for ${model.id} ` +
-            "- fix it manually before switching pools"
+          `${this.configPath} has an invalid maxplus model configuration for ${model.id}${FIX_HINT}`
         );
       }
+      const gatewayName = model.displayName?.trim();
       mergedModels[model.id] = {
         ...(existingModel ?? {}),
         // displayName wins so a gateway rename is picked up on the next sync;
         // the saved name only stands in for a model the gateway does not label.
         name:
-          model.displayName ??
+          gatewayName ||
           (typeof existingModel?.name === "string" ? existingModel.name : model.id),
       };
     }
+
+    // Only a live catalogue proves a model is gone: without wire capabilities
+    // maxplus-ai fell back to its built-in pools (or the gateway advertised
+    // none), so an absent id is not evidence of retirement. A model present but
+    // filtered out by the chat_completions filter is still served by the
+    // gateway - opencode just cannot reach it on that wire.
+    const catalogueKnown = input.models.some((model) => model.apis?.length);
+    const knownIds = new Set(input.models.map((model) => model.id));
+
     const staleModels: string[] = [];
     for (const [modelId, modelConfig] of Object.entries(existingModels ?? {})) {
       if (Object.hasOwn(mergedModels, modelId)) continue;
-      // Preserve models the gateway no longer serves so a renamed/removed pool
-      // never drops a configuration the user set up by hand; staleModels
-      // surfaces them to the caller instead of keeping them silently.
-      staleModels.push(modelId);
+      // Kept so a gateway rename never drops a configuration the user set up by
+      // hand. Entries this CLI did not write (null, a string, ...) pass through
+      // untouched: only ids it writes itself are shape-checked above.
       mergedModels[modelId] = modelConfig;
+      if (catalogueKnown && !knownIds.has(modelId)) staleModels.push(modelId);
     }
 
     providers[OPEN_CODE_PROVIDER_ID] = {

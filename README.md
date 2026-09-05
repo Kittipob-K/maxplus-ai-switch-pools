@@ -46,7 +46,8 @@ $ maxplus-ai
   `--model maxplus/<model>`. Its config stores only `$MAXPLUS_API_KEY`, never
   the primary key itself.
 - **OpenCode model sync** — merge-writes provider `maxplus` in
-  `~/.config/opencode/opencode.json`, preserves other providers, and references
+  `~/.config/opencode/opencode.json`, preserves other providers and previously
+  saved models while adding newly discovered compatible models, and references
   `{env:MAXPLUS_API_KEY}` rather than storing the key.
 - **Codex per-run provider** — launches Codex with `-c` provider overrides for
   the Responses API, leaving the user's `~/.codex/config.toml` untouched.

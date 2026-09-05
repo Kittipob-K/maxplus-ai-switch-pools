@@ -1,5 +1,9 @@
 # maxplus-ai-switch-pools
 
+[![npm version](https://img.shields.io/npm/v/maxplus-ai-switch-pools.svg)](https://www.npmjs.com/package/maxplus-ai-switch-pools)
+[![npm downloads](https://img.shields.io/npm/dm/maxplus-ai-switch-pools.svg)](https://www.npmjs.com/package/maxplus-ai-switch-pools)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
 CLI for switching AI pools / models and configuring agent CLIs (Claude Code,
 Oh My Pi, Pi, Aider, OpenCode, and Codex CLI) to talk to the **MaxPlus AI**
 gateway — with one primary API key that works across every agent.
@@ -71,29 +75,79 @@ $ maxplus-ai
 ## Install
 
 ```bash
-git clone <repo-url> && cd maxplus-ai-switch-pools
+npm install -g maxplus-ai-switch-pools
+```
+
+Or from source:
+
+```bash
+git clone https://github.com/Kittipob-K/maxplus-ai-switch-pools.git
+cd maxplus-ai-switch-pools
 npm install
 npm run build
 npm test
 npm link            # provides the global `maxplus-ai` command
 ```
 
-## Usage
+## Quick Start
 
 ```bash
-maxplus-ai                      # interactive customize flow (default)
-maxplus-ai customize            # same as above
-maxplus-ai settings             # edit API key / base URL
-maxplus-ai list                 # list models from the MaxPlus API
-maxplus-ai list --local         # list built-in local pools only
-maxplus-ai run -p <pool-id>     # launch an agent against a pool directly
-maxplus-ai run -a omp           # launch Oh My Pi
-maxplus-ai run -a pi            # launch Pi
-maxplus-ai run -a aider         # launch Aider
-maxplus-ai run -a opencode      # launch OpenCode
-maxplus-ai run -a codex         # launch Codex CLI
-maxplus-ai run -m <model>       # override the model
-maxplus-ai run -- <args...>     # pass extra args to the agent CLI
+# Install globally
+npm install -g maxplus-ai-switch-pools
+
+# Run interactive setup (will prompt for API key and base URL)
+maxplus-ai
+
+# Select your agent CLI (Claude Code, Oh My Pi, Pi, Aider, OpenCode, or Codex)
+# Choose a model/pool from the list
+# The agent launches automatically with your configuration
+```
+
+## Usage
+
+### Interactive mode (recommended)
+```bash
+maxplus-ai                      # Opens interactive menu to select agent and model
+```
+
+### Direct commands
+```bash
+maxplus-ai customize            # Same as default interactive mode
+maxplus-ai settings             # Edit API key / base URL
+maxplus-ai list                 # List models from the MaxPlus API
+maxplus-ai list --local         # List built-in local pools only
+```
+
+### Launch specific agent
+```bash
+maxplus-ai run -a claude-code   # Launch Claude Code
+maxplus-ai run -a omp           # Launch Oh My Pi
+maxplus-ai run -a pi            # Launch Pi
+maxplus-ai run -a aider         # Launch Aider
+maxplus-ai run -a opencode      # Launch OpenCode
+maxplus-ai run -a codex         # Launch Codex CLI
+```
+
+### Advanced options
+```bash
+maxplus-ai run -p <pool-id>     # Launch with specific pool directly
+maxplus-ai run -m <model>       # Override the model
+maxplus-ai run -- <args...>     # Pass extra args to the agent CLI
+```
+
+### Example workflow
+```bash
+# First time setup
+maxplus-ai
+# ✔ Select agent: Claude Code
+# ✔ Enter API key: ccsk_... (hidden input)
+# ✔ Base URL: https://api.maxplus-ai.cc/v1
+# ✔ Select model: qwen3.8-flash
+# Claude Code launches automatically!
+
+# Next time - just run and select
+maxplus-ai
+# Settings already saved, just pick agent and model
 ```
 
 ### The customize flow

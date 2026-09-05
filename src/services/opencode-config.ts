@@ -49,13 +49,17 @@ export class OpenCodeConfigService {
       existed = true;
     } catch (error) {
       if ((error as NodeJS.ErrnoException).code !== "ENOENT") {
-        throw new Error(`${this.configPath} is not valid JSON/JSONC - fix it before switching pools`);
+        throw new Error(
+          `${this.configPath} is not valid JSON/JSONC - fix it manually before switching pools`
+        );
       }
     }
 
     const existingProviders = document.provider;
     if (existingProviders !== undefined && !isRecord(existingProviders)) {
-      throw new Error(`${this.configPath} has an invalid provider object`);
+      throw new Error(
+        `${this.configPath} has an invalid provider object - fix it manually before switching pools`
+      );
     }
 
     const compatibleModels = input.models.filter((model) =>
@@ -69,18 +73,24 @@ export class OpenCodeConfigService {
     const providers = { ...(existingProviders ?? {}) };
     const existingMaxPlus = providers[OPEN_CODE_PROVIDER_ID];
     if (existingMaxPlus !== undefined && !isRecord(existingMaxPlus)) {
-      throw new Error(`${this.configPath} has an invalid maxplus provider object`);
+      throw new Error(
+        `${this.configPath} has an invalid maxplus provider object - fix it manually before switching pools`
+      );
     }
 
     const maxplus = existingMaxPlus ?? {};
     const existingOptions = maxplus.options;
     if (existingOptions !== undefined && !isRecord(existingOptions)) {
-      throw new Error(`${this.configPath} has an invalid maxplus options object`);
+      throw new Error(
+        `${this.configPath} has an invalid maxplus options object - fix it manually before switching pools`
+      );
     }
 
     const existingModels = maxplus.models;
     if (existingModels !== undefined && !isRecord(existingModels)) {
-      throw new Error(`${this.configPath} has an invalid maxplus models object`);
+      throw new Error(
+        `${this.configPath} has an invalid maxplus models object - fix it manually before switching pools`
+      );
     }
 
     const mergedModels: Record<string, unknown> = {};
@@ -88,7 +98,8 @@ export class OpenCodeConfigService {
       const existingModel = existingModels?.[model.id];
       if (existingModel !== undefined && !isRecord(existingModel)) {
         throw new Error(
-          `${this.configPath} has an invalid maxplus model configuration for ${model.id}`
+          `${this.configPath} has an invalid maxplus model configuration for ${model.id} ` +
+            "- fix it manually before switching pools"
         );
       }
       mergedModels[model.id] = {

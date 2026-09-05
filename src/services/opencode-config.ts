@@ -29,6 +29,12 @@ export interface OpenCodeConfigResult {
   staleModels: string[];
 }
 
+/**
+ * Merge-writes provider.maxplus in opencode.json, keeping the user's other
+ * providers, options and hand-tuned model entries. Only the live MaxPlus
+ * catalogue and our options are replaced, so a gateway rename never erases a
+ * limit the user set by hand.
+ */
 export class OpenCodeConfigService {
   readonly configPath: string;
 
@@ -62,10 +68,14 @@ export class OpenCodeConfigService {
       );
     }
 
+    // Opencode uses only the OpenAI-compatible wire. When the gateway advertises
+    // no capabilities (older API, or a locally configured pool) keep the
+    // selected model so the user can still launch it.
     const compatibleModels = input.models.filter((model) =>
       model.apis?.includes("chat_completions") ?? model.id === input.selected
     );
     const selected = compatibleModels.find((model) => model.id === input.selected);
+    // Selected model first, then the rest of the live catalogue.
     const catalogue = selected
       ? [selected, ...compatibleModels.filter((model) => model.id !== selected.id)]
       : compatibleModels;
@@ -104,6 +114,8 @@ export class OpenCodeConfigService {
       }
       mergedModels[model.id] = {
         ...(existingModel ?? {}),
+        // displayName wins so a gateway rename is picked up on the next sync;
+        // the saved name only stands in for a model the gateway does not label.
         name:
           model.displayName ??
           (typeof existingModel?.name === "string" ? existingModel.name : model.id),

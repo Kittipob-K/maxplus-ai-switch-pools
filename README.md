@@ -46,9 +46,13 @@ $ maxplus-ai
   `--model maxplus/<model>`. Its config stores only `$MAXPLUS_API_KEY`, never
   the primary key itself.
 - **OpenCode model sync** — merge-writes provider `maxplus` in
-  `~/.config/opencode/opencode.json`, preserves other providers and previously
-  saved models while adding newly discovered compatible models, and references
-  `{env:MAXPLUS_API_KEY}` rather than storing the key.
+  `~/.config/opencode/opencode.json` with the live `chat_completions`
+  catalogue (selected first) and our options, preserving your other providers
+  and any model entries you tuned by hand, and references
+  `{env:MAXPLUS_API_KEY}` rather than storing the key. A gateway `displayName`
+  overrides an edited label so renames are picked up; a retired model is kept
+  and reported as a warning so you can prune it; `$schema` is added only when
+  the file is newly created.
 - **Codex per-run provider** — launches Codex with `-c` provider overrides for
   the Responses API, leaving the user's `~/.codex/config.toml` untouched.
 - **Live model catalogue** — pools are fetched from the MaxPlus API

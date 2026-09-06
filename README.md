@@ -8,7 +8,7 @@ CLI for switching AI pools / models and configuring agent CLIs (Claude Code,
 Oh My Pi, Pi, Aider, OpenCode, and Codex CLI) to talk to the **MaxPlus AI**
 gateway — with one primary API key that works across every agent.
 
-```
+```bash
 $ maxplus-ai
 ✔ Customize which agents CLI? Claude Code
 
@@ -115,11 +115,13 @@ maxplus-ai
 ## Usage
 
 ### Interactive mode (recommended)
+
 ```bash
 maxplus-ai                      # Opens interactive menu to select agent and model
 ```
 
 ### Direct commands
+
 ```bash
 maxplus-ai customize            # Same as default interactive mode
 maxplus-ai settings             # Edit API key / base URL
@@ -128,12 +130,14 @@ maxplus-ai list --local         # List built-in local pools only
 ```
 
 ### Update the CLI
+
 ```bash
 maxplus-ai --update             # Check npm and install the latest release
 # Alias: maxplus-ai update
 ```
 
 ### Launch specific agent
+
 ```bash
 maxplus-ai run -a claude-code   # Launch Claude Code
 maxplus-ai run -a omp           # Launch Oh My Pi
@@ -144,6 +148,7 @@ maxplus-ai run -a codex         # Launch Codex CLI
 ```
 
 ### Advanced options
+
 ```bash
 maxplus-ai run -p <pool-id>     # Launch with specific pool directly
 maxplus-ai run -m <model>       # Override the model
@@ -151,6 +156,7 @@ maxplus-ai run -- <args...>     # Pass extra args to the agent CLI
 ```
 
 ### Example workflow
+
 ```bash
 # First time setup
 maxplus-ai
@@ -210,7 +216,9 @@ automatically. Set `MAXPLUS_DISABLE_KEYCHAIN=1` to force file-only storage:
 
 | Field     | Purpose                                                              |
 | --------- | -------------------------------------------------------------------- |
+
 | `apiKey`  | Primary API key — Bearer token for the models API and exported to every agent CLI. Present in this file only on keychain-less systems; otherwise the key lives in the OS keychain. |
+
 | `baseUrl` | MaxPlus models endpoint including `/v1`; maxplus-ai normalizes it for each agent's protocol. Default: `https://api.maxplus-ai.cc/v1`. |
 
 ## Verification

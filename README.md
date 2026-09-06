@@ -5,8 +5,8 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 CLI for switching AI pools / models and configuring agent CLIs (Claude Code,
-Oh My Pi, Pi, Aider, OpenCode, Codex CLI, and Grok Build) to talk to the **MaxPlus AI**
-gateway — with one primary API key that works across every agent.
+Oh My Pi, Pi, Aider, OpenCode, Codex CLI, and Grok Build) to talk to the
+**MaxPlus AI** gateway — with one primary API key that works across every agent.
 
 ```bash
 $ maxplus-ai
@@ -45,34 +45,37 @@ $ maxplus-ai
   into `~/.pi/agent/models.json` under provider `maxplus`, then starts Pi with
   `--model maxplus/<model>`. Its config stores only `$MAXPLUS_API_KEY`, never
   the primary key itself.
-- **OpenCode model sync** — merge-writes provider `maxplus` in
-  `~/.config/opencode/opencode.json`: the live `chat_completions` catalogue
-  (selected first) plus `baseURL` and `apiKey` are rewritten, while your other
-  providers, extra options and any model entries you tuned by hand are
-  preserved. The key is referenced as `{env:MAXPLUS_API_KEY}`, never stored. A
-  gateway `displayName` overrides an edited label so renames are picked up; a
-  retired model is kept and reported as a warning so you can prune it;
-  `$schema` is added only when the file is newly created.
-- **OpenCode dual-wire sync (installer parity)** — messages-capable models are
-  exposed through an `@ai-sdk/anthropic` provider and chat_completions models
-  through `@ai-sdk/openai-compatible` (`maxplus` / `maxplus-openai`), with
-  `model` and `small_model` refs pinned to the selected model's wire. Models
-  saved by older releases under the single `maxplus` provider migrate to the
-  OpenAI-compatible provider automatically.
-- **Codex installer-parity config** — deploys `~/.codex/config.toml`,
-  `maxplus.config.toml`, and `auth.json` (0600) so `codex` works standalone,
-  plus per-run `-c` provider overrides at launch.
+- **OpenCode model sync (installer parity, dual-wire)** — merge-writes
+  `~/.config/opencode/opencode.json` with two MaxPlus providers:
+  messages-capable models are exposed through an `@ai-sdk/anthropic` provider
+  and `chat_completions` models through an `@ai-sdk/openai-compatible`
+  provider (`maxplus` / `maxplus-openai`), with `model` and `small_model` refs
+  pinned to the selected model's wire. Your other providers, extra options and
+  any model entries you tuned by hand are preserved; the key is referenced as
+  `{env:MAXPLUS_API_KEY}`, never stored. Models saved by older releases under
+  the single `maxplus` provider migrate to the OpenAI-compatible provider
+  automatically; a retired model is kept and reported as a warning so you can
+  prune it; `$schema` is added only when the file is newly created.
 - **Live model catalogue** — pools are fetched from the MaxPlus API
   (`GET /v1/models`, Bearer auth, cursor pagination). If the API is
   unreachable, falls back to built-in local pools with a warning.
 - **Prerequisite prompts (next-best-step)** — if base URL or API key are not
   configured yet, `maxplus-ai` asks for them inline (hidden input for the key)
   and saves them — no need to remember the right command.
-- **Claude Code configuration** — mirrors the official MaxPlus installer:
-  writes `~/.claude.json` and `~/.claude/settings.json` (endpoint, key, model,
-  permissions, onboarding flags, key approval), removes stale credential
-  files, and can scrub stale `export ANTHROPIC_*` lines from your shell rc
-  files.
+- **Claude Code configuration (installer parity)** — mirrors the official
+  MaxPlus installer: writes `~/.claude.json` and `~/.claude/settings.json`
+  (endpoint, key, model, permissions, onboarding flags, key approval), removes
+  stale credential files, and can scrub stale `export ANTHROPIC_*` lines from
+  your shell rc files.
+- **Codex installer-parity config** — deploys `~/.codex/config.toml`
+  (marker-managed regions merged into your existing config),
+  `~/.codex/maxplus.config.toml`, and `~/.codex/auth.json` (0600) so `codex`
+  works standalone, plus per-run `-c` provider overrides at launch.
+- **Grok Build configuration (installer parity)** — merge-writes a
+  marker-delimited `[model]` block into `~/.grok/config.toml` (Responses wire,
+  pool base URL, key inline at 0600) plus the `[models]` / `[endpoints]` /
+  `[marketplace]` defaults the official MaxPlus Grok installer writes, and can
+  scrub legacy `MAXPLUS_*` exports from your shell rc files.
 - **Update check** — a once-per-day background check against the npm registry
   prints an `Update available` notice (never blocking or crashing the flow);
   run `maxplus-ai --update` to self-update via `npm install -g`. Set
@@ -188,8 +191,8 @@ maxplus-ai
 4. **Fetch models** from `GET {baseURL}/models` and pick a pool.
 5. **Filter compatibility** using each model's advertised wire protocols.
 6. **Write agent config when required** — Claude Code, Oh My Pi, Pi,
-   OpenCode, and Grok Build receive merge-safe configuration; Aider and Codex
-   use launch-time environment/arguments only.
+   OpenCode, Codex, and Grok Build receive merge-safe configuration; Aider
+   uses launch-time environment/arguments only.
 7. **Launch** the agent with a clean environment.
 
 ## Agent compatibility
@@ -223,12 +226,10 @@ automatically. Set `MAXPLUS_DISABLE_KEYCHAIN=1` to force file-only storage:
 }
 ```
 
-| Field     | Purpose                                                              |
-| --------- | -------------------------------------------------------------------- |
-
+| Field     | Purpose                                                                                                                                                                           |
+| --------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `apiKey`  | Primary API key — Bearer token for the models API and exported to every agent CLI. Present in this file only on keychain-less systems; otherwise the key lives in the OS keychain. |
-
-| `baseUrl` | MaxPlus models endpoint including `/v1`; maxplus-ai normalizes it for each agent's protocol. Default: `https://api.maxplus-ai.cc/v1`. |
+| `baseUrl` | MaxPlus models endpoint including `/v1`; maxplus-ai normalizes it for each agent's protocol. Default: `https://api.maxplus-ai.cc/v1`.                                              |
 
 ## Verification
 

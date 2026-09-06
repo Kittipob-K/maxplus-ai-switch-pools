@@ -66,6 +66,10 @@ $ maxplus-ai
   permissions, onboarding flags, key approval), removes stale credential
   files, and can scrub stale `export ANTHROPIC_*` lines from your shell rc
   files.
+- **Update check** — a once-per-day background check against the npm registry
+  prints an `Update available` notice (never blocking or crashing the flow);
+  run `maxplus-ai --update` to self-update via `npm install -g`. Set
+  `MAXPLUS_NO_UPDATE_CHECK=1` to disable the passive check.
 - **Semantic CLI output** — consistent ✔/ℹ/!/✖ alerts, headings, aligned
   definition lists, inline markup and a status spinner, with ASCII fallback for
   dumb terminals (see [`src/ui.ts`](src/ui.ts)).
@@ -121,6 +125,12 @@ maxplus-ai customize            # Same as default interactive mode
 maxplus-ai settings             # Edit API key / base URL
 maxplus-ai list                 # List models from the MaxPlus API
 maxplus-ai list --local         # List built-in local pools only
+```
+
+### Update the CLI
+```bash
+maxplus-ai --update             # Check npm and install the latest release
+# Alias: maxplus-ai update
 ```
 
 ### Launch specific agent

@@ -34,11 +34,13 @@ src/
     settings.ts         Settings menu (API key / base URL) + `maxplus-ai settings`
     run.ts              non-interactive launch: maxplus-ai run [-p pool] [-m model] [-- args]
     list.ts             model list (remote, --local fallback)
+    update.ts           `--update` self-update flow + passive "update available" notice
   services/
     settings.ts         SettingsService: Credential Store — keychain-first API key + ~/.config/maxplus-ai/settings.json
     keychain.ts         openKeychain(): OS keychain entry (service maxplus-ai, account = username); null when unavailable/disabled
     prereq.ts           ensurePrerequisites(): inline prompts for missing baseUrl/apiKey
     pool.ts             PoolService: local pools + MaxPlus /models API (Bearer, pagination)
+    update.ts           npm registry check (24h cache file), semver compare, `npm install -g` spawn
     agent.ts            AgentService: prepare launch plan, clean env, spawn agent
     claude-config.ts    installer-parity writes of ~/.claude.json + ~/.claude/settings.json
     omp-config.ts       merge-write ~/.omp/agent/models.yml (per-model wire api

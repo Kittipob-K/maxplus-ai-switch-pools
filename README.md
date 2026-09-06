@@ -53,8 +53,9 @@ $ maxplus-ai
   gateway `displayName` overrides an edited label so renames are picked up; a
   retired model is kept and reported as a warning so you can prune it;
   `$schema` is added only when the file is newly created.
-- **Codex per-run provider** — launches Codex with `-c` provider overrides for
-  the Responses API, leaving the user's `~/.codex/config.toml` untouched.
+- **Codex installer-parity config** — deploys `~/.codex/config.toml`,
+  `maxplus.config.toml`, and `auth.json` (0600) so `codex` works standalone,
+  plus per-run `-c` provider overrides at launch.
 - **Live model catalogue** — pools are fetched from the MaxPlus API
   (`GET /v1/models`, Bearer auth, cursor pagination). If the API is
   unreachable, falls back to built-in local pools with a warning.
@@ -194,7 +195,7 @@ maxplus-ai
 | Pi | `--model maxplus/<model>` | any advertised protocol | `~/.pi/agent/models.json` |
 | Aider | `--model openai/<model>` | `chat_completions` | none |
 | OpenCode | `--model maxplus/<model>` | `chat_completions` | `~/.config/opencode/opencode.json` |
-| Codex CLI | `--model <model>` | `responses` | none; per-run `-c` overrides |
+| Codex CLI | `--model <model>` | `responses` | `~/.codex/config.toml`, `maxplus.config.toml`, `auth.json` |
 | Grok Build | default from `~/.grok/config.toml` | `responses` | `~/.grok/config.toml` (managed block, key inline) |
 
 Agent config directories are created with `0700` permissions and managed files

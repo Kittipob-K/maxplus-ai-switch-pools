@@ -279,6 +279,30 @@ test("run writes the Grok managed config block and launches without a key env va
   assert.match(raw, /default_skills_installs_purged = true/);
 });
 
+test("run deploys the Codex installer-parity config files before launching", async (context) => {
+  const fixture = await createFixture(context);
+  await writeCaptureStub(fixture.binDir, "codex");
+
+  const result = await run(
+    process.execPath,
+    ["dist/index.js", "run", "-a", "codex", "-p", "remote:responses-model"],
+    { cwd: process.cwd(), env: fixtureEnv(fixture), stdio: ["ignore", "pipe", "pipe"] }
+  );
+
+  assert.equal(result.code, 0, result.stderr || result.stdout);
+  const codexHome = join(fixture.homeDir, ".codex");
+  const raw = await readFile(join(codexHome, "config.toml"), "utf8");
+  assert.match(raw, /model = "responses-model"/);
+  assert.match(raw, /\[model_providers\.maxplus\]/);
+  assert.match(raw, /base_url = ".*"/);
+  const auth = JSON.parse(await readFile(join(codexHome, "auth.json"), "utf8"));
+  assert.equal(auth.OPENAI_API_KEY, "e2e-key");
+  assert.equal(
+    (await readFile(join(codexHome, "maxplus.config.toml"), "utf8")).includes("responses-model"),
+    true
+  );
+});
+
 test("model override uses the effective model protocol instead of the pool protocol", async (context) => {
   const fixture = await createFixture(context);
   await writeCaptureStub(fixture.binDir, "codex");

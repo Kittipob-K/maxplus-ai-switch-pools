@@ -9,6 +9,7 @@ import {
   PI_ENV_KEYS,
 } from "../types.js";
 import { ClaudeConfigService } from "./claude-config.js";
+import { CodexConfigService } from "./codex-config.js";
 import { GrokConfigService } from "./grok-config.js";
 import { OmpConfigService } from "./omp-config.js";
 import { OpenCodeConfigService } from "./opencode-config.js";
@@ -128,6 +129,20 @@ export const CUSTOMIZABLE_AGENTS: Agent[] = [
       if (options.args) args.push(...options.args);
       return args;
     },
+    // Installer parity: deploy ~/.codex/config.toml, maxplus.config.toml,
+    // and auth.json so `codex` works standalone, not only through maxplus-ai.
+    prepare: async ({ apiKey, endpoint, selected }) =>
+      new CodexConfigService().apply({ apiKey, endpoint, model: selected }),
+    scrubShellConfig: () =>
+      scrubShellRc([
+        "CODEX_API_KEY",
+        "CODEX_ACCESS_TOKEN",
+        "OPENAI_BASE_URL",
+        "OPENAI_API_KEY",
+        "MAXPLUS_CODEX_API_KEY",
+        "MAXPLUS_OC_CODEX_API_KEY",
+        "MAXPLUS_HERMES_CODEX_API_KEY",
+      ]),
     installUrl: "https://developers.openai.com/codex/cli/",
   },
   {

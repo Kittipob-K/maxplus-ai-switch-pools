@@ -1,5 +1,6 @@
 # Dependencies
 node_modules/
+docs/script-maxplus-ai/
 
 # Build output
 dist/

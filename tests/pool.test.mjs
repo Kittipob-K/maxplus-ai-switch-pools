@@ -8,7 +8,7 @@ test("local fallback pools only expose message-compatible agents", () => {
   for (const pool of pools) {
     assert.deepEqual(
       pool.agents.map((agent) => agent.id),
-      ["claude-code", "omp", "pi"]
+      ["claude-code", "omp", "pi", "opencode"]
     );
   }
 });

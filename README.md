@@ -53,6 +53,12 @@ $ maxplus-ai
   gateway `displayName` overrides an edited label so renames are picked up; a
   retired model is kept and reported as a warning so you can prune it;
   `$schema` is added only when the file is newly created.
+- **OpenCode dual-wire sync (installer parity)** — messages-capable models are
+  exposed through an `@ai-sdk/anthropic` provider and chat_completions models
+  through `@ai-sdk/openai-compatible` (`maxplus` / `maxplus-openai`), with
+  `model` and `small_model` refs pinned to the selected model's wire. Models
+  saved by older releases under the single `maxplus` provider migrate to the
+  OpenAI-compatible provider automatically.
 - **Codex installer-parity config** — deploys `~/.codex/config.toml`,
   `maxplus.config.toml`, and `auth.json` (0600) so `codex` works standalone,
   plus per-run `-c` provider overrides at launch.
@@ -194,7 +200,7 @@ maxplus-ai
 | Oh My Pi | `--model maxplus/<model>` | any advertised protocol | `~/.omp/agent/models.yml` |
 | Pi | `--model maxplus/<model>` | any advertised protocol | `~/.pi/agent/models.json` |
 | Aider | `--model openai/<model>` | `chat_completions` | none |
-| OpenCode | `--model maxplus/<model>` | `chat_completions` | `~/.config/opencode/opencode.json` |
+| OpenCode | `--model maxplus/<model>` | `messages`, `chat_completions` | `~/.config/opencode/opencode.json` (dual-wire providers + `model`/`small_model` refs) |
 | Codex CLI | `--model <model>` | `responses` | `~/.codex/config.toml`, `maxplus.config.toml`, `auth.json` |
 | Grok Build | default from `~/.grok/config.toml` | `responses` | `~/.grok/config.toml` (managed block, key inline) |
 

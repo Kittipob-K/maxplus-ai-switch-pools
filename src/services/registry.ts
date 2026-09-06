@@ -89,8 +89,10 @@ export const CUSTOMIZABLE_AGENTS: Agent[] = [
     apiKeyEnvVars: ["MAXPLUS_API_KEY"],
     baseUrlEnvVars: [],
     envToUnset: ["MAXPLUS_API_KEY", ...OPENAI_COMPATIBLE_ENV_KEYS],
+    // Installer parity: messages-capable models go through the Anthropic-shaped
+    // provider, chat_completions through the OpenAI-compatible one.
+    supportedProtocols: ["messages", "chat_completions"],
     modelPrefix: "maxplus/",
-    supportedProtocols: ["chat_completions"],
     prepare: async ({ endpoint, models, selected }) => {
       const result = await new OpenCodeConfigService().apply({
         endpoint,

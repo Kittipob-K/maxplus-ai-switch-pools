@@ -43,10 +43,18 @@ src/
     update.ts           npm registry check (24h cache file), semver compare, `npm install -g` spawn
     agent.ts            AgentService: prepare launch plan, clean env, spawn agent
     claude-config.ts    installer-parity writes of ~/.claude.json + ~/.claude/settings.json
+    codex-config.ts     installer-parity ~/.codex config.toml (marker-managed regions),
+                        maxplus.config.toml profile, and auth.json (0600)
+    grok-config.ts      merge-write ~/.grok/config.toml managed [model] block
+                        (marker-delimited, key inline, responses wire)
     omp-config.ts       merge-write ~/.omp/agent/models.yml (per-model wire api
                         from MaxPlus /models capabilities)
     pi-config.ts        merge-write ~/.pi/agent/models.json
-    opencode-config.ts  merge-write ~/.config/opencode/opencode.json
+    opencode-config.ts  merge-write ~/.config/opencode/opencode.json (dual-wire:
+                        maxplus=anthropic, maxplus-openai=openai-compatible,
+                        model/small_model refs; migrates legacy single-provider
+                        chat models)
+    shell-scrub.ts      shared stale rc-export scrubber for installer parity
     secure-file.ts      atomic 0600 writes + managed-directory permissions
     registry.ts         agent adapters: env, protocols, args, config preparation
 ```

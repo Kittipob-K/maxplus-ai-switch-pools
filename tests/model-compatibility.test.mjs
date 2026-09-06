@@ -13,11 +13,11 @@ test("remote pools only expose agents compatible with each model protocol", () =
 
   assert.deepEqual(
     pools[0].agents.map((agent) => agent.id),
-    ["claude-code", "omp", "pi"]
+    ["claude-code", "omp", "pi", "opencode"]
   );
   assert.deepEqual(
     pools[1].agents.map((agent) => agent.id),
-    ["omp", "pi", "codex"]
+    ["omp", "pi", "codex", "grok"]
   );
   assert.deepEqual(
     pools[2].agents.map((agent) => agent.id),

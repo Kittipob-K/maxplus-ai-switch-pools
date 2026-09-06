@@ -94,7 +94,7 @@ test("OMP config refuses an invalid providers value", async () => {
   assert.equal(await readFile(modelsPath, "utf8"), "providers: invalid\n");
 });
 
-async function openCodeCase(seed, expectedMessage) {
+async function openCodeCase(seed, expectedMessage, apis = ["chat_completions"]) {
   const directory = await mkdtemp(join(tmpdir(), "maxplus-opencode-"));
   const configPath = join(directory, "opencode.json");
   await writeFile(configPath, seed);
@@ -102,7 +102,7 @@ async function openCodeCase(seed, expectedMessage) {
   await assert.rejects(
     new OpenCodeConfigService(configPath).apply({
       endpoint: "https://example.com",
-      models: [{ id: "model", apis: ["chat_completions"] }],
+      models: [{ id: "model", apis }],
       selected: "model",
     }),
     expectedMessage
@@ -120,12 +120,19 @@ test("OpenCode config refuses a malformed maxplus options value", () =>
   openCodeCase('{"provider":{"maxplus":{"options":[]}}}', /invalid maxplus options object/));
 
 test("OpenCode config refuses a malformed maxplus models value", () =>
-  openCodeCase('{"provider":{"maxplus":{"models":"invalid"}}}', /invalid maxplus models object/));
+  openCodeCase('{"provider":{"maxplus":{"models":"invalid"}}}', /invalid maxplus models value|invalid maxplus models object/));
 
 test("OpenCode config refuses a malformed entry for a catalogue model", () =>
   openCodeCase(
     '{"provider":{"maxplus":{"models":{"model":"invalid"}}}}',
-    /invalid maxplus model configuration for model/
+    /invalid maxplus model configuration for model/,
+    ["messages"]
+  ));
+
+test("OpenCode config refuses a malformed entry in the openai-compatible provider", () =>
+  openCodeCase(
+    '{"provider":{"maxplus-openai":{"models":{"model":"invalid"}}}}',
+    /invalid maxplus-openai model configuration for model/
   ));
 
 test("OpenCode config refuses to overwrite malformed JSON", () =>

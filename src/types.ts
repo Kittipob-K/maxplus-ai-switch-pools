@@ -47,6 +47,19 @@ export const OPENAI_COMPATIBLE_ENV_KEYS = [
   "OPENAI_BASE_URL",
 ] as const;
 
+/**
+ * Environment variables cleared before launching Codex CLI: inherited Codex
+ * credentials would otherwise take precedence over the MaxPlus auth.json the
+ * config writer deploys (installer parity with codex-install.sh).
+ */
+export const CODEX_ENV_KEYS = ["CODEX_API_KEY", "CODEX_ACCESS_TOKEN"] as const;
+
+/**
+ * Environment variables cleared before launching Grok Build: an inherited
+ * GROK_HOME would relocate ~/.grok away from the config.toml this CLI writes.
+ */
+export const GROK_ENV_KEYS = ["GROK_HOME"] as const;
+
 export const GATEWAY_CREDENTIAL_ENV_KEYS = [
   ...CLAUDE_CODE_ENV_KEYS,
   ...OPENAI_COMPATIBLE_ENV_KEYS,

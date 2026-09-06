@@ -5,7 +5,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 CLI for switching AI pools / models and configuring agent CLIs (Claude Code,
-Oh My Pi, Pi, Aider, OpenCode, and Codex CLI) to talk to the **MaxPlus AI**
+Oh My Pi, Pi, Aider, OpenCode, Codex CLI, and Grok Build) to talk to the **MaxPlus AI**
 gateway — with one primary API key that works across every agent.
 
 ```bash
@@ -53,8 +53,15 @@ $ maxplus-ai
   gateway `displayName` overrides an edited label so renames are picked up; a
   retired model is kept and reported as a warning so you can prune it;
   `$schema` is added only when the file is newly created.
-- **Codex per-run provider** — launches Codex with `-c` provider overrides for
-  the Responses API, leaving the user's `~/.codex/config.toml` untouched.
+- **OpenCode dual-wire sync (installer parity)** — messages-capable models are
+  exposed through an `@ai-sdk/anthropic` provider and chat_completions models
+  through `@ai-sdk/openai-compatible` (`maxplus` / `maxplus-openai`), with
+  `model` and `small_model` refs pinned to the selected model's wire. Models
+  saved by older releases under the single `maxplus` provider migrate to the
+  OpenAI-compatible provider automatically.
+- **Codex installer-parity config** — deploys `~/.codex/config.toml`,
+  `maxplus.config.toml`, and `auth.json` (0600) so `codex` works standalone,
+  plus per-run `-c` provider overrides at launch.
 - **Live model catalogue** — pools are fetched from the MaxPlus API
   (`GET /v1/models`, Bearer auth, cursor pagination). If the API is
   unreachable, falls back to built-in local pools with a warning.
@@ -107,7 +114,7 @@ npm install -g maxplus-ai-switch-pools
 # Run interactive setup (will prompt for API key and base URL)
 maxplus-ai
 
-# Select your agent CLI (Claude Code, Oh My Pi, Pi, Aider, OpenCode, or Codex)
+# Select your agent CLI (Claude Code, Oh My Pi, Pi, Aider, OpenCode, Codex, or Grok Build)
 # Choose a model/pool from the list
 # The agent launches automatically with your configuration
 ```
@@ -145,6 +152,7 @@ maxplus-ai run -a pi            # Launch Pi
 maxplus-ai run -a aider         # Launch Aider
 maxplus-ai run -a opencode      # Launch OpenCode
 maxplus-ai run -a codex         # Launch Codex CLI
+maxplus-ai run -a grok          # Launch Grok Build (xAI CLI)
 ```
 
 ### Advanced options
@@ -179,9 +187,9 @@ maxplus-ai
    `ANTHROPIC_API_KEY` if not configured, saves them to Settings.
 4. **Fetch models** from `GET {baseURL}/models` and pick a pool.
 5. **Filter compatibility** using each model's advertised wire protocols.
-6. **Write agent config when required** — Claude Code, Oh My Pi, Pi, and
-   OpenCode receive merge-safe configuration; Aider and Codex use launch-time
-   environment/arguments only.
+6. **Write agent config when required** — Claude Code, Oh My Pi, Pi,
+   OpenCode, and Grok Build receive merge-safe configuration; Aider and Codex
+   use launch-time environment/arguments only.
 7. **Launch** the agent with a clean environment.
 
 ## Agent compatibility
@@ -192,8 +200,9 @@ maxplus-ai
 | Oh My Pi | `--model maxplus/<model>` | any advertised protocol | `~/.omp/agent/models.yml` |
 | Pi | `--model maxplus/<model>` | any advertised protocol | `~/.pi/agent/models.json` |
 | Aider | `--model openai/<model>` | `chat_completions` | none |
-| OpenCode | `--model maxplus/<model>` | `chat_completions` | `~/.config/opencode/opencode.json` |
-| Codex CLI | `--model <model>` | `responses` | none; per-run `-c` overrides |
+| OpenCode | `--model maxplus/<model>` | `messages`, `chat_completions` | `~/.config/opencode/opencode.json` (dual-wire providers + `model`/`small_model` refs) |
+| Codex CLI | `--model <model>` | `responses` | `~/.codex/config.toml`, `maxplus.config.toml`, `auth.json` |
+| Grok Build | default from `~/.grok/config.toml` | `responses` | `~/.grok/config.toml` (managed block, key inline) |
 
 Agent config directories are created with `0700` permissions and managed files
 with `0600` permissions. Merge failures are reported instead of overwriting a

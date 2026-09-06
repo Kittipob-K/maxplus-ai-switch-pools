@@ -17,6 +17,7 @@ test("OpenCode config preserves other providers and references the key from env"
   const result = await new OpenCodeConfigService(configPath).apply({
     endpoint: "https://gateway.example.com",
     models: [
+      { id: "claude-model", apis: ["messages"] },
       { id: "chat-model", apis: ["chat_completions"] },
       { id: "responses-model", apis: ["responses"] },
     ],
@@ -32,7 +33,10 @@ test("OpenCode config preserves other providers and references the key from env"
     "https://gateway.example.com/v1"
   );
   assert.equal(config.$schema, undefined);
-  assert.deepEqual(Object.keys(config.provider.maxplus.models), ["chat-model"]);
+  assert.deepEqual(Object.keys(config.provider.maxplus.models), ["claude-model"]);
+  assert.deepEqual(Object.keys(config.provider["maxplus-openai"].models), ["chat-model"]);
+  assert.equal(config.model, "maxplus-openai/chat-model");
+  assert.equal(config.small_model, "maxplus-openai/chat-model");
   assert.equal(JSON.stringify(config).includes("test-key"), false);
 });
 
@@ -49,7 +53,8 @@ test("OpenCode config adds the schema only when it creates the file", async () =
 
   const config = JSON.parse(await readFile(configPath, "utf8"));
   assert.equal(config.$schema, "https://opencode.ai/config.json");
-  assert.deepEqual(Object.keys(config.provider.maxplus.models), ["chat-model"]);
+  assert.equal(config.model, "maxplus-openai/chat-model");
+  assert.deepEqual(Object.keys(config.provider["maxplus-openai"].models), ["chat-model"]);
 
   await writeFile(configPath, JSON.stringify({ theme: "dark" }));
 
@@ -103,38 +108,39 @@ test("OpenCode config adds new models without dropping existing model settings",
     selected: "new-model",
   });
   assert.equal(result.path, configPath);
+  // Chat-capable saved models migrate to the OpenAI-compatible provider;
+  // old-model has no live wire and stays in the Anthropic provider as stale.
   assert.deepEqual(result.staleModels, ["old-model"]);
 
   const config = JSON.parse(await readFile(configPath, "utf8"));
   assert.equal(config.provider.existing.name, "Existing");
   assert.deepEqual(config.mcp.existing, { type: "remote" });
+  assert.equal(config.provider.maxplus.npm, "@ai-sdk/anthropic");
   assert.equal(config.provider.maxplus.options.timeout, 60000);
   assert.deepEqual(config.provider.maxplus.options.headers, { "X-Workspace": "keep" });
-  assert.equal(config.provider.maxplus.options.apiKey, "{env:MAXPLUS_API_KEY}");
-  assert.deepEqual(Object.keys(config.provider.maxplus.models), [
+  assert.deepEqual(Object.keys(config.provider.maxplus.models), ["old-model"]);
+  assert.equal(config.provider["maxplus-openai"].options.apiKey, "{env:MAXPLUS_API_KEY}");
+  assert.deepEqual(Object.keys(config.provider["maxplus-openai"].models), [
     "new-model",
     "shared-model",
-    "old-model",
   ]);
-  assert.deepEqual(config.provider.maxplus.models["new-model"], { name: "New model" });
-  assert.equal(config.provider.maxplus.models["shared-model"].name, "Updated shared name");
-  assert.deepEqual(config.provider.maxplus.models["shared-model"].limit, { output: 4096 });
-  assert.deepEqual(config.provider.maxplus.models["old-model"].limit, { context: 100000 });
-  assert.equal(config.provider.maxplus.models["responses-model"], undefined);
+  assert.deepEqual(config.provider["maxplus-openai"].models["new-model"], { name: "New model" });
+  assert.equal(config.provider["maxplus-openai"].models["shared-model"].name, "Updated shared name");
+  assert.deepEqual(config.provider["maxplus-openai"].models["shared-model"].limit, { output: 4096 });
+  assert.equal(config.model, "maxplus-openai/new-model");
 
   const second = await new OpenCodeConfigService(configPath).apply({
     endpoint: "https://gateway.example.com",
     models: [{ id: "another-model", apis: ["chat_completions"] }],
     selected: "another-model",
   });
-  assert.deepEqual(second.staleModels, ["new-model", "shared-model", "old-model"]);
+  assert.deepEqual(second.staleModels, ["old-model", "new-model", "shared-model"]);
 
   const updated = JSON.parse(await readFile(configPath, "utf8"));
-  assert.deepEqual(Object.keys(updated.provider.maxplus.models), [
+  assert.deepEqual(Object.keys(updated.provider["maxplus-openai"].models), [
     "another-model",
     "new-model",
     "shared-model",
-    "old-model",
   ]);
 });
 
@@ -157,9 +163,9 @@ test("OpenCode config resolves the model name from displayName, then the saved n
   await new OpenCodeConfigService(configPath).apply({
     endpoint: "https://gateway.example.com",
     models: [
-      { id: "renamed-model", apis: ["chat_completions"] },
-      { id: "gateway-named", displayName: "Gateway name", apis: ["chat_completions"] },
-      { id: "unlabeled", apis: ["chat_completions"] },
+      { id: "renamed-model", apis: ["messages"] },
+      { id: "gateway-named", displayName: "Gateway name", apis: ["messages"] },
+      { id: "unlabeled", apis: ["messages"] },
     ],
     selected: "renamed-model",
   });
@@ -185,7 +191,7 @@ test("OpenCode config leaves entries outside the catalogue untouched", async () 
 
   const result = await new OpenCodeConfigService(configPath).apply({
     endpoint: "https://gateway.example.com",
-    models: [{ id: "model", apis: ["chat_completions"] }],
+    models: [{ id: "model", apis: ["messages"] }],
     selected: "model",
   });
 
@@ -196,7 +202,7 @@ test("OpenCode config leaves entries outside the catalogue untouched", async () 
   assert.deepEqual(models.model, { name: "model" });
 });
 
-test("OpenCode config keeps a model that only serves another wire without calling it retired", async () => {
+test("OpenCode config routes each wire to its own provider without calling models retired", async () => {
   const directory = await mkdtemp(join(tmpdir(), "maxplus-opencode-"));
   const configPath = join(directory, "opencode.json");
   await writeFile(
@@ -217,11 +223,30 @@ test("OpenCode config keeps a model that only serves another wire without callin
     selected: "chat-model",
   });
 
-  // The gateway still serves "messages-only"; opencode just cannot reach it.
+  // The gateway still serves both models; each wire just gets its own provider.
   assert.deepEqual(result.staleModels, []);
-  const models = JSON.parse(await readFile(configPath, "utf8")).provider.maxplus.models;
-  assert.deepEqual(models["messages-only"], { name: "Messages only" });
-  assert.equal(models["chat-model"].name, "chat-model");
+  const config = JSON.parse(await readFile(configPath, "utf8"));
+  assert.deepEqual(config.provider.maxplus.models["messages-only"], { name: "Messages only" });
+  assert.deepEqual(config.provider["maxplus-openai"].models["chat-model"], { name: "chat-model" });
+  assert.equal(config.model, "maxplus-openai/chat-model");
+});
+
+test("OpenCode config prefers the Anthropic provider ref for a messages-only selection", async () => {
+  const directory = await mkdtemp(join(tmpdir(), "maxplus-opencode-"));
+  const configPath = join(directory, "opencode.json");
+
+  await new OpenCodeConfigService(configPath).apply({
+    endpoint: "https://gateway.example.com",
+    models: [
+      { id: "claude-model", apis: ["messages"] },
+      { id: "chat-model", apis: ["chat_completions"] },
+    ],
+    selected: "claude-model",
+  });
+
+  const config = JSON.parse(await readFile(configPath, "utf8"));
+  assert.equal(config.model, "maxplus/claude-model");
+  assert.equal(config.small_model, "maxplus/claude-model");
 });
 
 test("OpenCode config skips retired-model reporting when the gateway catalogue is unknown", async () => {
@@ -269,7 +294,7 @@ test("OpenCode config keeps a saved label when the gateway sends an empty displa
 
   await new OpenCodeConfigService(configPath).apply({
     endpoint: "https://gateway.example.com",
-    models: [{ id: "blank-name", displayName: "", apis: ["chat_completions"] }],
+    models: [{ id: "blank-name", displayName: "", apis: ["messages"] }],
     selected: "blank-name",
   });
 

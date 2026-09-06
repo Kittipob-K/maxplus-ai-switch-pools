@@ -24,7 +24,7 @@ node dist/index.js   # built CLI; `maxplus-ai` = npm link global
 
 ## Architecture
 
-```
+```bash
 src/
   index.ts              commander program; no-args entry -> customize flow
   types.ts              shared types, protocols, launch/config contracts

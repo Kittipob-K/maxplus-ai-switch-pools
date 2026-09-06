@@ -2,14 +2,18 @@ import type { Agent } from "../types.js";
 import type { RemoteModel } from "../types.js";
 import {
   CLAUDE_CODE_ENV_KEYS,
+  CODEX_ENV_KEYS,
+  GROK_ENV_KEYS,
   OMP_ENV_KEYS,
   OPENAI_COMPATIBLE_ENV_KEYS,
   PI_ENV_KEYS,
 } from "../types.js";
 import { ClaudeConfigService } from "./claude-config.js";
+import { GrokConfigService } from "./grok-config.js";
 import { OmpConfigService } from "./omp-config.js";
 import { OpenCodeConfigService } from "./opencode-config.js";
 import { PiConfigService } from "./pi-config.js";
+import { scrubShellRc } from "./shell-scrub.js";
 import * as ui from "../ui.js";
 
 /**
@@ -107,7 +111,7 @@ export const CUSTOMIZABLE_AGENTS: Agent[] = [
     command: "codex",
     apiKeyEnvVars: ["MAXPLUS_API_KEY"],
     baseUrlEnvVars: [],
-    envToUnset: ["MAXPLUS_API_KEY", ...OPENAI_COMPATIBLE_ENV_KEYS],
+    envToUnset: ["MAXPLUS_API_KEY", ...OPENAI_COMPATIBLE_ENV_KEYS, ...CODEX_ENV_KEYS],
     supportedProtocols: ["responses"],
     buildArgs: (options) => {
       const endpoint = options.baseUrl?.replace(/\/+$/, "");
@@ -125,6 +129,42 @@ export const CUSTOMIZABLE_AGENTS: Agent[] = [
       return args;
     },
     installUrl: "https://developers.openai.com/codex/cli/",
+  },
+  {
+    id: "grok",
+    name: "Grok Build",
+    command: "grok",
+    // Grok reads the key from the inline api_key inside the managed
+    // ~/.grok/config.toml block — no API-key env var, installer parity.
+    apiKeyEnvVars: [],
+    baseUrlEnvVars: [],
+    envToUnset: [...GROK_ENV_KEYS],
+    supportedProtocols: ["responses"],
+    // The managed config block pins the default model; the launch only
+    // forwards the user's own arguments.
+    buildArgs: (options) => (options.args ? [...options.args] : []),
+    prepare: async ({ apiKey, endpoint, models, selected }) => {
+      const model = models.find((candidate) => candidate.id === selected);
+      return new GrokConfigService().apply({
+        apiKey,
+        endpoint,
+        // Installer default pool path; the gateway routes key-bound keys by
+        // model id on the root endpoint.
+        pool: "grok",
+        model: selected,
+        displayName: model?.displayName,
+        contextWindow: selected === "grok-4.5" ? 1000000 : undefined,
+      });
+    },
+    scrubShellConfig: () => scrubShellRc([
+      "MAXPLUS_API_KEY",
+      "MAXPLUS_AI_API_KEY",
+      "MAXPLUS_CODEX_API_KEY",
+      "MAXPLUS_OC_CODEX_API_KEY",
+      "MAXPLUS_HERMES_CODEX_API_KEY",
+      "CUSTOM_API_KEY",
+    ]),
+    installUrl: "https://x.ai/cli",
   },
 ];
 

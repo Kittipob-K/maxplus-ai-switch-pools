@@ -48,6 +48,30 @@ test("Codex launch plan uses per-invocation Responses provider overrides", () =>
   assert.equal(plan.env.MAXPLUS_API_KEY, "test-key");
 });
 
+test("Grok Build launch plan forwards only user args and keeps the key out of the environment", () => {
+  const agent = getAgentById("grok");
+  assert.ok(agent);
+
+  const originalGrokHome = process.env.GROK_HOME;
+  process.env.GROK_HOME = "/inherited/grok";
+  try {
+    const plan = new AgentService().createLaunchPlan(agent, {
+      model: "grok-4.5",
+      apiKey: "test-key",
+      baseUrl: "https://gateway.example.com",
+      args: ["-p", "hello"],
+    });
+
+    assert.equal(plan.command, "grok");
+    assert.deepEqual(plan.args, ["-p", "hello"]);
+    assert.equal(plan.env.GROK_HOME, undefined);
+    assert.equal(plan.env.MAXPLUS_API_KEY, undefined);
+  } finally {
+    if (originalGrokHome === undefined) delete process.env.GROK_HOME;
+    else process.env.GROK_HOME = originalGrokHome;
+  }
+});
+
 test("launch plan removes inherited credentials before injecting Settings values", () => {
   const originalKey = process.env.OPENAI_API_KEY;
   const originalBase = process.env.OPENAI_API_BASE;

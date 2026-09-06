@@ -252,6 +252,33 @@ test("run launches Codex with Responses provider overrides", async (context) => 
   assert.ok(capture.args.includes(`model_providers.maxplus.base_url="${fixture.baseUrl}"`));
 });
 
+test("run writes the Grok managed config block and launches without a key env var", async (context) => {
+  const fixture = await createFixture(context);
+  await writeCaptureStub(fixture.binDir, "grok");
+
+  const result = await run(
+    process.execPath,
+    ["dist/index.js", "run", "-a", "grok", "-p", "remote:responses-model"],
+    { cwd: process.cwd(), env: fixtureEnv(fixture), stdio: ["ignore", "pipe", "pipe"] }
+  );
+
+  assert.equal(result.code, 0, result.stderr || result.stdout);
+  const capture = JSON.parse(await readFile(fixture.capturePath, "utf8"));
+  assert.equal(capture.maxplusKey, null);
+  assert.equal(capture.anthropicKey, null);
+  assert.equal(capture.openaiKey, null);
+  assert.deepEqual(capture.args, []);
+  const raw = await readFile(join(fixture.homeDir, ".grok", "config.toml"), "utf8");
+  assert.equal(raw.includes("# >>> MaxPlus AI Grok Build >>>"), true);
+  assert.match(raw, /\[model\."responses-model"\]/);
+  assert.match(raw, /base_url = ".*\/grok\/v1"/);
+  assert.match(raw, /api_key = "e2e-key"/);
+  assert.match(raw, /api_backend = "responses"/);
+  assert.match(raw, /default = "responses-model"/);
+  assert.match(raw, /models_base_url = /);
+  assert.match(raw, /default_skills_installs_purged = true/);
+});
+
 test("model override uses the effective model protocol instead of the pool protocol", async (context) => {
   const fixture = await createFixture(context);
   await writeCaptureStub(fixture.binDir, "codex");

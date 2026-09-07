@@ -1,6 +1,6 @@
 {
   "name": "maxplus-ai-switch-pools",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "description": "CLI tool for switching AI pools based on selected models",
   "engines": {
     "node": ">=22"

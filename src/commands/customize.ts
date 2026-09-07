@@ -7,25 +7,15 @@ import { endpointFromModelsBaseUrl } from "../services/endpoint.js";
 import { getAgentById, listAgentOptions } from "../services/registry.js";
 import { ensureAgentInstalled } from "../services/installer.js";
 import { ensurePrerequisites } from "../services/prereq.js";
-import { runSettingsMenu } from "./settings.js";
+import { sectionTabs } from "../prompts/section-tabs.js";
 import type { Pool } from "../types.js";
 import { apiKeyEnvVarsFor, baseUrlEnvVarsFor, DEFAULT_MODELS_BASE_URL } from "../types.js";
 import * as ui from "../ui.js";
 
 /**
- * Default maxplus-ai flow: pick which agent CLI to customize, clear (unset) its
- * inherited environment, then launch it against a chosen pool.
+ * Default maxplus-ai flow: choose an AGENTS or SETTINGS section, then pick an
+ * agent to customize, clear (unset) inherited environment, and launch it.
  */
-async function pickAgent(): Promise<string> {
-  return select({
-    message: "Customize which agents CLI?",
-    choices: [
-      ...listAgentOptions(),
-      { name: "Settings", value: "__settings__" },
-    ],
-  });
-}
-
 async function pickPool(pools: Pool[]): Promise<string> {
   return select({
     message: "Select a model/pool:",
@@ -44,23 +34,38 @@ export const customizeCommand = new Command("customize")
       // Show logo before anything else.
       ui.logo();
 
-      // Ensure credentials are configured before entering the menu.
-      const settings = await ensurePrerequisites(settingsService);
-
-      // Main loop: keep offering the menu until the user cancels (Ctrl+C).
+      // Main loop: the tab and its list share one screen. Switching tabs
+      // immediately replaces the list; Enter activates its highlighted item.
+      let initialSection: "agents" | "settings" = "agents";
       for (;;) {
-        const agentId = await pickAgent();
+        const savedSettings = await settingsService.load();
+        const action = await sectionTabs({
+          agents: listAgentOptions(savedSettings.lastAgentId),
+          apiKey: savedSettings.apiKey,
+          baseUrl: savedSettings.baseUrl,
+          initialSection,
+        });
 
-        // "Settings" entry — edit the primary API key, then return to menu.
-        if (agentId === "__settings__") {
-          await runSettingsMenu();
+        if (action.type === "back") return;
+
+        if (action.type !== "agent") {
+          // Settings actions are handled by the settings command's shared menu.
+          // Import lazily to avoid a module cycle with this default flow.
+          const { handleSettingsAction } = await import("./settings.js");
+          await handleSettingsAction(action, settingsService);
+          initialSection = "settings";
           console.log();
           continue;
         }
+        initialSection = "agents";
 
-        const agent = getAgentById(agentId);
+        // Defer this until AGENTS is selected. This lets a user enter Settings
+        // without first being forced through the credentials prompt.
+        const settings = await ensurePrerequisites(settingsService);
+
+        const agent = getAgentById(action.id);
         if (!agent) {
-          ui.danger(`Agent "${agentId}" is not available yet.`);
+          ui.danger(`Agent "${action.id}" is not available yet.`);
           process.exit(1);
         }
 
@@ -148,6 +153,7 @@ export const customizeCommand = new Command("customize")
         }
 
         ui.h2(`🚀 Starting ${agent.name} with model ${pool.model}`);
+        await settingsService.save({ ...settings, lastAgentId: agent.id });
         const exitCode = await agentService.run(agent, {
           pool: poolId,
           model: pool.model,

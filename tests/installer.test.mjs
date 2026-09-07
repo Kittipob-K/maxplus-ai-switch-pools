@@ -53,11 +53,6 @@ test("install specs use the official commands from each agent's docs", () => {
     displayInstallCommand(AGENT_INSTALL_SPECS.pi.macos),
     /npm install -g --ignore-scripts @earendil-works\/pi-coding-agent/
   );
-  // Gemini CLI installs through the official npm package on every platform.
-  assert.match(
-    displayInstallCommand(AGENT_INSTALL_SPECS.gemini.windows),
-    /npm install -g @google\/gemini-cli/
-  );
   // xAI has no npm package — never offer the third-party grok-cli.
   assert.ok(
     !JSON.stringify(AGENT_INSTALL_SPECS.grok).includes("grok-cli"),
@@ -89,6 +84,20 @@ test("isInstalled finds a stub executable placed on PATH", async () => {
   }
 });
 
+test("isInstalled ignores the cmux grok wrapper when Grok Build is absent", async () => {
+  const binDir = await mkdtemp(join(tmpdir(), "maxplus-grok-wrapper-"));
+  const wrapper = join(binDir, "grok");
+  await writeFile(wrapper, "#!/usr/bin/env bash\n# cmux grok wrapper - installs cmux hooks\n");
+  await chmod(wrapper, 0o755);
+
+  const originalPath = process.env.PATH;
+  try {
+    process.env.PATH = binDir;
+    assert.equal(await isInstalled("grok"), false);
+  } finally {
+    process.env.PATH = originalPath;
+  }
+});
 test("runInstallCommand executes a simple command and reports failure output", async () => {
   const ok = await runInstallCommand({
     steps: [{ kind: "script", shell: "sh", command: "echo hello-install" }],

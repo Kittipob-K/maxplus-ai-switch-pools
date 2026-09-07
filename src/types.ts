@@ -1,4 +1,4 @@
-export type WireProtocol = "messages" | "chat_completions" | "responses" | "gemini";
+export type WireProtocol = "messages" | "chat_completions" | "responses";
 
 /**
  * Environment variables that must be cleared (unset) before launching
@@ -59,20 +59,6 @@ export const CODEX_ENV_KEYS = ["CODEX_API_KEY", "CODEX_ACCESS_TOKEN"] as const;
  * GROK_HOME would relocate ~/.grok away from the config.toml this CLI writes.
  */
 export const GROK_ENV_KEYS = ["GROK_HOME"] as const;
-
-/**
- * Environment variables cleared before launching Gemini CLI: inherited Gemini
- * credentials (shell exports, or a GEMINI_API_KEY that is not a MaxPlus key)
- * would override the ~/.gemini/.env file this CLI writes (installer parity
- * with gemini-install.sh).
- */
-export const GEMINI_ENV_KEYS = [
-  "GEMINI_API_KEY",
-  "GOOGLE_API_KEY",
-  "GOOGLE_GEMINI_BASE_URL",
-  "GOOGLE_GENAI_USE_VERTEXAI",
-  "GEMINI_MODEL",
-] as const;
 
 export const GATEWAY_CREDENTIAL_ENV_KEYS = [
   ...CLAUDE_CODE_ENV_KEYS,
@@ -144,6 +130,8 @@ export interface Settings {
   apiKey?: string;
   /** Base URL of the MaxPlus models API. Default: https://api.maxplus-ai.cc/v1 */
   baseUrl?: string;
+  /** Agent most recently launched through the interactive menu. */
+  lastAgentId?: string;
 }
 
 /** Default MaxPlus API endpoint used to list selectable models/pools. */

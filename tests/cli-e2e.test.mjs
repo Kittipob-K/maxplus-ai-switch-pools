@@ -271,7 +271,7 @@ test("run writes the Grok managed config block and launches without a key env va
   const raw = await readFile(join(fixture.homeDir, ".grok", "config.toml"), "utf8");
   assert.equal(raw.includes("# >>> MaxPlus AI Grok Build >>>"), true);
   assert.match(raw, /\[model\."responses-model"\]/);
-  assert.match(raw, /base_url = ".*\/grok\/v1"/);
+  assert.match(raw, /base_url = ".*\/v1"/);
   assert.match(raw, /api_key = "e2e-key"/);
   assert.match(raw, /api_backend = "responses"/);
   assert.match(raw, /default = "responses-model"/);

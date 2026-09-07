@@ -1,5 +1,5 @@
 import { constants, existsSync } from "node:fs";
-import { access } from "node:fs/promises";
+import { access, readFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import type { ChildProcessByStdio } from "node:child_process";
 import { spawn } from "node:child_process";
@@ -12,7 +12,6 @@ import * as ui from "../ui.js";
  * documentation (verified 2026-09): code.claude.com/docs/en/setup,
  * developers.openai.com/codex/cli/, docs.x.ai/build/overview,
  * opencode.ai/docs/, pi.dev/docs/latest, omp.sh / github.com/can1357/oh-my-pi,
- * geminicli.com/docs/get-started/installation,
  * aider.chat/docs/install.html.
  */
 
@@ -120,13 +119,6 @@ export const AGENT_INSTALL_SPECS: Record<string, AgentInstallSpec> = {
     windows: npmGlobal("--ignore-scripts", "@earendil-works/pi-coding-agent"),
     docsUrl: "https://pi.dev/docs/latest",
   },
-  // Official Gemini CLI install: npm global package, all three platforms.
-  gemini: {
-    macos: npmGlobal("@google/gemini-cli"),
-    linux: npmGlobal("@google/gemini-cli"),
-    windows: npmGlobal("@google/gemini-cli"),
-    docsUrl: "https://geminicli.com/docs/get-started/installation",
-  },
   opencode: {
     macos: curlPipe("https://opencode.ai/install", "bash"),
     linux: curlPipe("https://opencode.ai/install", "bash"),
@@ -224,6 +216,13 @@ export async function isInstalled(command: string): Promise<boolean> {
     for (const candidate of candidates) {
       try {
         await access(candidate, constants.X_OK);
+        if (command === "grok") {
+          try {
+            if ((await readFile(candidate, "utf8")).includes("cmux grok wrapper")) continue;
+          } catch {
+            // A non-text executable cannot be the cmux shell wrapper.
+          }
+        }
         return true;
       } catch {
         // keep scanning

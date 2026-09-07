@@ -29,14 +29,16 @@ src/
   index.ts              commander program; no-args entry -> customize flow
   types.ts              shared types, protocols, launch/config contracts
   ui.ts                 semantic CLI output primitives (r-lib cli style)
+  prompts/section-tabs.ts custom interactive AGENTS | SETTINGS tab/list prompt
   commands/
-    customize.ts        default interactive flow (pick agent -> fetch models -> launch)
-    settings.ts         Settings menu (API key / base URL) + `maxplus-ai settings`
+    customize.ts        default tabbed flow (agent -> fetch models -> launch)
+    settings.ts         API key / base URL / reset actions + `maxplus-ai settings`
     run.ts              non-interactive launch: maxplus-ai run [-p pool] [-m model] [-- args]
     list.ts             model list (remote, --local fallback)
     update.ts           `--update` self-update flow + passive "update available" notice
   services/
-    settings.ts         SettingsService: Credential Store — keychain-first API key + ~/.config/maxplus-ai/settings.json
+    settings.ts         SettingsService: Credential Store — keychain-first API key, base URL,
+                        last-used agent + ~/.config/maxplus-ai/settings.json
     keychain.ts         openKeychain(): OS keychain entry (service maxplus-ai, account = username); null when unavailable/disabled
     prereq.ts           ensurePrerequisites(): inline prompts for missing baseUrl/apiKey
     pool.ts             PoolService: local pools + MaxPlus /models API (Bearer, pagination)
@@ -47,8 +49,6 @@ src/
                         maxplus.config.toml profile, and auth.json (0600)
     grok-config.ts      merge-write ~/.grok/config.toml managed [model] block
                         (marker-delimited, key inline, responses wire)
-    gemini-config.ts    installer-parity ~/.gemini/.env (key, pool base URL,
-                        model, 0600) + ~/.gemini/settings.json auth-mode merge
     omp-config.ts       merge-write ~/.omp/agent/models.yml (per-model wire api
                         from MaxPlus /models capabilities)
     pi-config.ts        merge-write ~/.pi/agent/models.json
@@ -80,6 +80,10 @@ src/
    output, no spinner. Never crash the flow for an optional path.
 5. **Spawn without shell.** `spawn(cmd, args, { shell: false })` — required for
    DEP0190 avoidance and correct arg passing.
+6. **Interactive navigation stays consistent.** In the top-level tabbed menu,
+   `←`/`→`/`Tab` switch sections, `↑`/`↓` move, `Enter` selects, and `Esc`
+   goes back (or exits from AGENTS). Keep the last launched agent first with
+   a `(latest)` label.
 
 ## Code style
 

@@ -3,7 +3,6 @@ import type { RemoteModel } from "../types.js";
 import {
   CLAUDE_CODE_ENV_KEYS,
   CODEX_ENV_KEYS,
-  GEMINI_ENV_KEYS,
   GROK_ENV_KEYS,
   OMP_ENV_KEYS,
   OPENAI_COMPATIBLE_ENV_KEYS,
@@ -12,7 +11,6 @@ import {
 import { ClaudeConfigService } from "./claude-config.js";
 import { CodexConfigService } from "./codex-config.js";
 import { GrokConfigService } from "./grok-config.js";
-import { GeminiConfigService } from "./gemini-config.js";
 import { OmpConfigService } from "./omp-config.js";
 import { OpenCodeConfigService } from "./opencode-config.js";
 import { PiConfigService } from "./pi-config.js";
@@ -71,37 +69,6 @@ export const CUSTOMIZABLE_AGENTS: Agent[] = [
       await new PiConfigService().apply({ endpoint, models, selected }),
     ],
     installUrl: "https://pi.dev/docs/latest",
-  },
-  {
-    id: "gemini",
-    name: "Gemini CLI",
-    command: "gemini",
-    // The key lives in ~/.gemini/.env (installer parity); an inherited
-    // GEMINI_API_KEY would override it, so it is unset before launch.
-    apiKeyEnvVars: [],
-    baseUrlEnvVars: [],
-    envToUnset: GEMINI_ENV_KEYS,
-    supportedProtocols: ["gemini"],
-    // The managed .env pins the default model; the launch only forwards the
-    // user's own arguments.
-    buildArgs: (options) => (options.args ? [...options.args] : []),
-    prepare: async ({ apiKey, endpoint, selected }) =>
-      new GeminiConfigService().apply({
-        apiKey,
-        endpoint,
-        // gemini-install.sh pool path: "gemini" uses the endpoint root.
-        pool: "gemini",
-        model: selected,
-      }),
-    scrubShellConfig: () =>
-      scrubShellRc([
-        "GEMINI_API_KEY",
-        "GOOGLE_API_KEY",
-        "GOOGLE_GEMINI_BASE_URL",
-        "GOOGLE_GENAI_USE_VERTEXAI",
-        "GEMINI_MODEL",
-      ]),
-    installUrl: "https://geminicli.com/docs/get-started/installation",
   },
   {
     id: "aider",
@@ -198,9 +165,6 @@ export const CUSTOMIZABLE_AGENTS: Agent[] = [
       return new GrokConfigService().apply({
         apiKey,
         endpoint,
-        // Installer default pool path; the gateway routes key-bound keys by
-        // model id on the root endpoint.
-        pool: "grok",
         model: selected,
         displayName: model?.displayName,
         contextWindow: selected === "grok-4.5" ? 1000000 : undefined,
@@ -225,8 +189,18 @@ export interface AgentOption {
   disabled?: boolean | string;
 }
 
-export function listAgentOptions(): AgentOption[] {
-  return CUSTOMIZABLE_AGENTS.map((a) => ({ name: a.name, value: a.id }));
+export function listAgentOptions(lastAgentId?: string): AgentOption[] {
+  const options = CUSTOMIZABLE_AGENTS.map((agent) => ({
+    name: agent.id === lastAgentId ? `${agent.name} (latest)` : agent.name,
+    value: agent.id,
+  }));
+  const latestIndex = options.findIndex((option) => option.value === lastAgentId);
+
+  if (latestIndex > 0) {
+    const [latest] = options.splice(latestIndex, 1);
+    options.unshift(latest);
+  }
+  return options;
 }
 
 export function getAgentById(id: string): Agent | undefined {

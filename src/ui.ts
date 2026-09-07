@@ -95,6 +95,19 @@ export function h3(title: string): void {
   writeLine(`${sym.line.repeat(2)} ${chalk.cyan.bold(title)}`);
 }
 
+/** Format a compact, terminal-friendly tab bar for top-level sections. */
+export function tabBar(active: "agents" | "settings"): string {
+  const tab = (label: string, selected: boolean): string =>
+    selected ? chalk.cyan.bold(`[ ${label} ]`) : chalk.gray(`  ${label}  `);
+
+  return `${tab("AGENTS", active === "agents")}  ${tab("SETTINGS", active === "settings")}`;
+}
+
+/** Render the top-level tab bar outside an interactive prompt. */
+export function tabs(active: "agents" | "settings"): void {
+  writeLine(tabBar(active));
+}
+
 // ------------------------------------------------------------------ rules
 
 export function rule(label?: string): void {

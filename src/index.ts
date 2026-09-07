@@ -26,7 +26,7 @@ program.addCommand(settingsCommand);
 program.addCommand(updateCommand);
 
 // Default flow: opening `maxplus-ai` with no subcommand launches the
-// "which agents CLI do you want to customize?" selector.
+// top-level AGENTS | SETTINGS interactive menu.
 const userArgs = process.argv.slice(2);
 if (userArgs.length === 0) {
   startUpdateNotice();

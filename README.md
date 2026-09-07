@@ -5,13 +5,27 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 CLI for switching AI pools / models and configuring agent CLIs (Claude Code,
-Oh My Pi, Pi, Aider, OpenCode, Codex CLI, Grok Build, and Gemini CLI) to talk
+Oh My Pi, Pi, Aider, OpenCode, Codex CLI, and Grok Build) to talk
 to the **MaxPlus AI** gateway — with one primary API key that works across
 every agent.
 
 ```bash
 $ maxplus-ai
-✔ Customize which agents CLI? Claude Code
+[ AGENTS ]    SETTINGS
+❯ Grok Build (latest)
+  Claude Code
+  Oh My Pi
+  Pi
+  Aider
+  OpenCode
+  Codex CLI
+  ← → switch tab · ↑↓ navigate · Enter select · Esc back
+
+  AGENTS    [ SETTINGS ]
+❯ API Key: Change ccsk…26f3
+  Base URL: https://api.maxplus-ai.cc/v1
+  Reset API key and Base URL
+  ← → switch tab · ↑↓ navigate · Enter select · Esc back
 
 ── Customizing Claude Code ────────────────────────────────────────────
 ✔ ANTHROPIC_API_KEY=ccsk…26f3 (primary API key)
@@ -25,8 +39,10 @@ $ maxplus-ai
 
 ## Features
 
-- **Interactive by default** — running `maxplus-ai` with no arguments opens the
-  "Customize which agents CLI?" menu for all supported CLIs plus Settings.
+- **Interactive by default** — running `maxplus-ai` with no arguments opens a
+  terminal-friendly `AGENTS | SETTINGS` menu. Switch tabs with `←`/`→` or
+  `Tab`; their lists update immediately. The last agent launched is moved to
+  the top and labelled `(latest)`.
 - **Clean environment per launch** — inherited Anthropic, OpenAI, and MaxPlus
   credentials (including `ANTHROPIC_*`, `OPENAI_*`, and
   `MAXPLUS_API_KEY`) are unset first, so the agent always starts from
@@ -36,7 +52,7 @@ $ maxplus-ai
   MaxPlus proxy credentials are removed first so only Settings values reach the
   child process.
 - **Protocol-aware selection** — models are matched to agents using the gateway's
-  advertised `messages`, `chat_completions`, `responses`, and `gemini`
+  advertised `messages`, `chat_completions`, and `responses`
   capabilities. Unsupported model/agent combinations are hidden or rejected
   before launch.
 - **Oh My Pi model sync** — every selection rewrites the `maxplus` provider in
@@ -88,13 +104,6 @@ $ maxplus-ai
   pool base URL, key inline at 0600) plus the `[models]` / `[endpoints]` /
   `[marketplace]` defaults the official MaxPlus Grok installer writes, and can
   scrub legacy `MAXPLUS_*` exports from your shell rc files.
-- **Gemini CLI configuration (installer parity)** — writes `~/.gemini/.env`
-  (key, pool base URL, `GOOGLE_GENAI_USE_VERTEXAI=false`, default model at
-  0600; `GOOGLE_API_KEY` deliberately omitted to avoid duplicate-key warnings)
-  and merge-selects `security.auth.selectedType = "gemini-api-key"` in
-  `~/.gemini/settings.json`, mirroring the official MaxPlus `gemini-install.sh`.
-  Inherited `GEMINI_API_KEY` / `GOOGLE_GEMINI_*` exports are unset before
-  launch and can be scrubbed from your shell rc files.
 - **Update check** — a once-per-day background check against the npm registry
   prints an `Update available` notice (never blocking or crashing the flow);
   run `maxplus-ai --update` to self-update via `npm install -g`. Set
@@ -135,7 +144,7 @@ npm install -g maxplus-ai-switch-pools
 # Run interactive setup (will prompt for API key and base URL)
 maxplus-ai
 
-# Select your agent CLI (Claude Code, Oh My Pi, Pi, Aider, OpenCode, Codex, Grok Build, or Gemini CLI)
+# Select your agent CLI (Claude Code, Oh My Pi, Pi, Aider, OpenCode, Codex, or Grok Build)
 # Choose a model/pool from the list
 # The agent launches automatically with your configuration
 ```
@@ -145,14 +154,14 @@ maxplus-ai
 ### Interactive mode (recommended)
 
 ```bash
-maxplus-ai                      # Opens interactive menu to select agent and model
+maxplus-ai                      # Opens the AGENTS | SETTINGS interactive menu
 ```
 
 ### Direct commands
 
 ```bash
 maxplus-ai customize            # Same as default interactive mode
-maxplus-ai settings             # Edit API key / base URL
+maxplus-ai settings             # Edit API key / base URL in the Settings menu
 maxplus-ai list                 # List models from the MaxPlus API
 maxplus-ai list --local         # List built-in local pools only
 ```
@@ -174,7 +183,6 @@ maxplus-ai run -a aider         # Launch Aider
 maxplus-ai run -a opencode      # Launch OpenCode
 maxplus-ai run -a codex         # Launch Codex CLI
 maxplus-ai run -a grok          # Launch Grok Build (xAI CLI)
-maxplus-ai run -a gemini        # Launch Gemini CLI (Google)
 ```
 
 ### Advanced options
@@ -201,18 +209,32 @@ maxplus-ai
 # Settings already saved, just pick agent and model
 ```
 
+### Interactive navigation
+
+| Key | Action |
+| --- | --- |
+| `←` / `→` / `Tab` | Switch between AGENTS and SETTINGS; the list changes immediately. |
+| `↑` / `↓` | Move through the current tab's list. |
+| `Enter` | Select the highlighted agent or settings action. |
+| `Esc` | From SETTINGS, return to AGENTS; from AGENTS, exit the CLI. |
+
+The **SETTINGS** tab provides direct actions for **API Key**, **Base URL**, and
+**Reset API key and Base URL**. Reset asks for confirmation, keeps the last-used
+agent shortcut, and returns to the Settings menu.
+
 ### The customize flow
 
-1. **Pick agent CLI** — select a supported CLI to configure/launch, or *Settings*.
-2. **Unset** inherited credential env vars.
-3. **Check prerequisites** — prompts for `ANTHROPIC_BASE_URL` and
+1. **Choose an agent** — use the *AGENTS* tab; the most recently launched agent
+   appears first as `(latest)`.
+3. **Unset** inherited credential env vars.
+4. **Check prerequisites** — prompts for `ANTHROPIC_BASE_URL` and
    `ANTHROPIC_API_KEY` if not configured, saves them to Settings.
-4. **Fetch models** from `GET {baseURL}/models` and pick a pool.
-5. **Filter compatibility** using each model's advertised wire protocols.
-6. **Write agent config when required** — Claude Code, Oh My Pi, Pi,
-   OpenCode, Codex, Grok Build, and Gemini CLI receive merge-safe
+5. **Fetch models** from `GET {baseURL}/models` and pick a pool.
+6. **Filter compatibility** using each model's advertised wire protocols.
+7. **Write agent config when required** — Claude Code, Oh My Pi, Pi,
+   OpenCode, Codex, and Grok Build receive merge-safe
    configuration; Aider uses launch-time environment/arguments only.
-7. **Launch** the agent with a clean environment.
+8. **Launch** the agent with a clean environment and remember it as `(latest)`.
 
 ## Agent compatibility
 
@@ -225,7 +247,6 @@ maxplus-ai
 | OpenCode | `--model maxplus/<model>` | `messages`, `chat_completions` | `~/.config/opencode/opencode.json` (dual-wire providers + `model`/`small_model` refs) |
 | Codex CLI | `--model <model>` | `responses` | `~/.codex/config.toml`, `maxplus.config.toml`, `auth.json` |
 | Grok Build | default from `~/.grok/config.toml` | `responses` | `~/.grok/config.toml` (managed block, key inline) |
-| Gemini CLI | default from `~/.gemini/.env` | `gemini` | `~/.gemini/.env`, `~/.gemini/settings.json` (auth-mode merge) |
 
 Agent config directories are created with `0700` permissions and managed files
 with `0600` permissions. Merge failures are reported instead of overwriting a
@@ -250,6 +271,7 @@ automatically. Set `MAXPLUS_DISABLE_KEYCHAIN=1` to force file-only storage:
 | --------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `apiKey`  | Primary API key — Bearer token for the models API and exported to every agent CLI. Present in this file only on keychain-less systems; otherwise the key lives in the OS keychain. |
 | `baseUrl` | MaxPlus models endpoint including `/v1`; maxplus-ai normalizes it for each agent's protocol. Default: `https://api.maxplus-ai.cc/v1`.                                              |
+| `lastAgentId` | ID of the most recently launched interactive agent; used to put it first in the AGENTS tab. No credential data is stored in this field. |
 
 ## Verification
 

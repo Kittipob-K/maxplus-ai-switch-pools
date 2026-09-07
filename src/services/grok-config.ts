@@ -10,7 +10,7 @@ import { writeSecureFile } from "./secure-file.js";
  * unrelated TOML section, key and comment the user already has.
  *
  * The block uses the Responses wire (`api_backend = "responses"`) with the
- * pool-scoped base URL and the key inline, so Grok never depends on a shell
+ * root Responses URL and the key inline, so Grok never depends on a shell
  * environment variable (installer parity).
  */
 
@@ -22,8 +22,6 @@ export interface GrokConfigInput {
   apiKey: string;
   /** Endpoint root WITHOUT /v1, e.g. https://api.maxplus-ai.cc */
   endpoint: string;
-  /** Pool path for the base URL (e.g. "grok", "grok-fast", a Channel slug). */
-  pool: string;
   /** Model id to configure, e.g. grok-4.5. */
   model: string;
   /** Display name recorded in the managed block. */
@@ -44,7 +42,7 @@ function isManagedModelHeading(line: string, modelId: string): boolean {
 }
 
 function renderManagedBlock(input: GrokConfigInput): string {
-  const baseUrl = `${input.endpoint.replace(/\/+$/, "")}/${input.pool}/v1`;
+  const baseUrl = `${input.endpoint.replace(/\/+$/, "")}/v1`;
   const name = input.displayName?.trim() || input.model;
   const contextWindow = input.contextWindow ?? 200000;
   return [

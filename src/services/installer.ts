@@ -15,7 +15,7 @@ import * as ui from "../ui.js";
  * aider.chat/docs/install.html.
  */
 
-/** The platforms maxplus-ai distinguishes for install commands. */
+/** The platforms cli-hop distinguishes for install commands. */
 export type PlatformKey = "macos" | "linux" | "windows";
 
 /**
@@ -186,7 +186,7 @@ export function currentPlatformKey(): PlatformKey | undefined {
 }
 
 /**
- * The install spec for the running platform, or undefined when maxplus-ai has
+ * The install spec for the running platform, or undefined when cli-hop has
  * no verified install command there — the flow then degrades to the docs URL.
  */
 export function installSpecFor(

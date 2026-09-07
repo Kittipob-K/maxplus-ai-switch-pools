@@ -7,7 +7,7 @@ import { writeSecureFile } from "./secure-file.js";
 
 /**
  * The Credential Store (ADR 0001): non-secret settings live in
- * ${XDG_CONFIG_HOME:-~/.config}/maxplus-ai/settings.json (0600), while the
+ * ${XDG_CONFIG_HOME:-~/.config}/cli-hop/settings.json (0600), while the
  * Primary API Key lives in the OS keychain when one is usable and in that
  * file otherwise.
  *
@@ -33,7 +33,7 @@ export class SettingsService {
   ) {
     const base =
       process.env.XDG_CONFIG_HOME || join(homedir(), ".config");
-    this.filePath = filePath ?? join(base, "maxplus-ai", "settings.json");
+    this.filePath = filePath ?? join(base, "cli-hop", "settings.json");
     if (options && "keychain" in options) this.#keychain = options.keychain;
   }
 

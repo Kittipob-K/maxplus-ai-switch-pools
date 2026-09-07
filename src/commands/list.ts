@@ -4,7 +4,7 @@ import { SettingsService } from "../services/settings.js";
 import * as ui from "../ui.js";
 
 export const listCommand = new Command("list")
-  .description("List available pools and agents (from the MaxPlus API when configured)")
+  .description("List available pools and agents (from the CLI Hop API when configured)")
   .option("-l, --local", "Only show built-in local pools, skip the API call")
   .action(async (options) => {
     const poolService = new PoolService();
@@ -25,7 +25,7 @@ export const listCommand = new Command("list")
       error = resolved.error;
     }
 
-    ui.h1(source === "remote" ? "Models (from MaxPlus API)" : "Available Pools (local)");
+    ui.h1(source === "remote" ? "Models (from CLI Hop API)" : "Available Pools (local)");
     if (error) {
       ui.warn(`${error} — showing local pools`);
     }

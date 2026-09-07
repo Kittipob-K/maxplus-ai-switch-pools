@@ -35,9 +35,9 @@ export const runCommand = new Command("run")
       // API_KEY, prompting for missing values (next-best-step flow).
       const settings = await ensurePrerequisites(settingsService);
 
-      // Resolve selectable pools: live MaxPlus model list when available,
+      // Resolve selectable pools: live CLI Hop model list when available,
       // otherwise the built-in local pools.
-      const spinner = new ui.Spinner("Fetching models from MaxPlus API");
+      const spinner = new ui.Spinner("Fetching models from CLI Hop API");
       const { pools, source, error, models } = await poolService.resolvePools({
         apiKey: settings.apiKey,
         baseUrl: settings.baseUrl,
@@ -59,7 +59,7 @@ export const runCommand = new Command("run")
           )
         : pools;
       if (selectablePools.length === 0) {
-        ui.danger(`No available MaxPlus models support ${requestedAgent}.`);
+        ui.danger(`No available CLI Hop models support ${requestedAgent}.`);
         process.exit(1);
       }
 
@@ -114,7 +114,7 @@ export const runCommand = new Command("run")
       if (models) {
         const remoteModel = models.find((model) => model.id === selectedModel);
         if (!remoteModel) {
-          ui.danger(`Model "${selectedModel}" is not in the MaxPlus catalogue.`);
+          ui.danger(`Model "${selectedModel}" is not in the CLI Hop catalogue.`);
           process.exit(1);
         }
         if (!agentSupportsModel(agent, remoteModel)) {

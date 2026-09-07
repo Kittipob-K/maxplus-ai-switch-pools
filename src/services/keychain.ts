@@ -8,15 +8,15 @@ export interface Keychain {
   deletePassword(): boolean;
 }
 
-const SERVICE = "maxplus-ai";
+const SERVICE = "cli-hop";
 
 /**
  * Open the OS-keychain entry holding the Primary API Key, or null when the
- * keychain is disabled (MAXPLUS_DISABLE_KEYCHAIN=1 — tests, or users who want
+ * keychain is disabled (CLI_HOP_DISABLE_KEYCHAIN=1 — tests, or users who want
  * file-only mode) or cannot be reached on this machine.
  */
 export function openKeychain(): Keychain | null {
-  const off = process.env.MAXPLUS_DISABLE_KEYCHAIN;
+  const off = process.env.CLI_HOP_DISABLE_KEYCHAIN;
   if (off && off !== "0") return null;
   try {
     return new Entry(SERVICE, userInfo().username);

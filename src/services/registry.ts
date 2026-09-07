@@ -18,7 +18,7 @@ import { scrubShellRc } from "./shell-scrub.js";
 import * as ui from "../ui.js";
 
 /**
- * Registry of agent CLIs that can be customized through maxplus-ai.
+ * Registry of agent CLIs that can be customized through cli-hop.
  * Extend this list as more agents are supported (openai, custom, ...).
  */
 export const CUSTOMIZABLE_AGENTS: Agent[] = [
@@ -29,7 +29,7 @@ export const CUSTOMIZABLE_AGENTS: Agent[] = [
     apiKeyEnvVars: ["ANTHROPIC_API_KEY"],
     baseUrlEnvVars: ["ANTHROPIC_BASE_URL"],
     // Before launching Claude Code, unset the inherited Anthropic/proxy
-    // credentials so maxplus-ai can manage them explicitly. The primary API key
+    // credentials so cli-hop can manage them explicitly. The primary API key
     // from settings is then injected through the registry env mapping.
     envToUnset: CLAUDE_CODE_ENV_KEYS,
     supportedProtocols: ["messages"],
@@ -42,14 +42,14 @@ export const CUSTOMIZABLE_AGENTS: Agent[] = [
     id: "omp",
     name: "Oh My Pi",
     command: "omp",
-    apiKeyEnvVars: ["MAXPLUS_API_KEY"],
+    apiKeyEnvVars: ["CLI_HOP_API_KEY"],
     baseUrlEnvVars: [],
     // Inherited Anthropic/proxy vars plus pi/omp config-dir pointers that
     // would relocate ~/.omp away from the models.yml we write.
     envToUnset: OMP_ENV_KEYS,
     // omp's --model selector is provider/modelId; prefix disambiguates the
-    // MaxPlus copy from built-in providers with the same ids.
-    modelPrefix: "maxplus/",
+    // CLI Hop copy from built-in providers with the same ids.
+    modelPrefix: "cli-hop/",
     supportedProtocols: ["messages", "chat_completions", "responses"],
     prepare: async ({ endpoint, models, selected }) => [
       await new OmpConfigService().apply({ endpoint, models, selected }),
@@ -60,10 +60,10 @@ export const CUSTOMIZABLE_AGENTS: Agent[] = [
     id: "pi",
     name: "Pi",
     command: "pi",
-    apiKeyEnvVars: ["MAXPLUS_API_KEY"],
+    apiKeyEnvVars: ["CLI_HOP_API_KEY"],
     baseUrlEnvVars: [],
     envToUnset: PI_ENV_KEYS,
-    modelPrefix: "maxplus/",
+    modelPrefix: "cli-hop/",
     supportedProtocols: ["messages", "chat_completions", "responses"],
     prepare: async ({ endpoint, models, selected }) => [
       await new PiConfigService().apply({ endpoint, models, selected }),
@@ -86,13 +86,13 @@ export const CUSTOMIZABLE_AGENTS: Agent[] = [
     id: "opencode",
     name: "OpenCode",
     command: "opencode",
-    apiKeyEnvVars: ["MAXPLUS_API_KEY"],
+    apiKeyEnvVars: ["CLI_HOP_API_KEY"],
     baseUrlEnvVars: [],
-    envToUnset: ["MAXPLUS_API_KEY", ...OPENAI_COMPATIBLE_ENV_KEYS],
+    envToUnset: ["CLI_HOP_API_KEY", ...OPENAI_COMPATIBLE_ENV_KEYS],
     // Installer parity: messages-capable models go through the Anthropic-shaped
     // provider, chat_completions through the OpenAI-compatible one.
     supportedProtocols: ["messages", "chat_completions"],
-    modelPrefix: "maxplus/",
+    modelPrefix: "cli-hop/",
     prepare: async ({ endpoint, models, selected }) => {
       const result = await new OpenCodeConfigService().apply({
         endpoint,
@@ -101,7 +101,7 @@ export const CUSTOMIZABLE_AGENTS: Agent[] = [
       });
       for (const modelId of result.staleModels) {
         ui.warn(
-          `stale MaxPlus model ${ui.val(`maxplus/${modelId}`)} kept in opencode.json - the gateway no longer serves it; remove it from the file to prune`
+          `stale CLI Hop model ${ui.val(`cli-hop/${modelId}`)} kept in opencode.json - the gateway no longer serves it; remove it from the file to prune`
         );
       }
       return [result.path];
@@ -112,27 +112,27 @@ export const CUSTOMIZABLE_AGENTS: Agent[] = [
     id: "codex",
     name: "Codex CLI",
     command: "codex",
-    apiKeyEnvVars: ["MAXPLUS_API_KEY"],
+    apiKeyEnvVars: ["CLI_HOP_API_KEY"],
     baseUrlEnvVars: [],
-    envToUnset: ["MAXPLUS_API_KEY", ...OPENAI_COMPATIBLE_ENV_KEYS, ...CODEX_ENV_KEYS],
+    envToUnset: ["CLI_HOP_API_KEY", ...OPENAI_COMPATIBLE_ENV_KEYS, ...CODEX_ENV_KEYS],
     supportedProtocols: ["responses"],
     buildArgs: (options) => {
       const endpoint = options.baseUrl?.replace(/\/+$/, "");
       const args = options.model ? ["--model", options.model] : [];
       if (endpoint) {
         args.push(
-          "-c", 'model_provider="maxplus"',
-          "-c", 'model_providers.maxplus.name="MaxPlus"',
-          "-c", `model_providers.maxplus.base_url=${JSON.stringify(`${endpoint}/v1`)}`,
-          "-c", 'model_providers.maxplus.env_key="MAXPLUS_API_KEY"',
-          "-c", 'model_providers.maxplus.wire_api="responses"'
+          "-c", 'model_provider="cli-hop"',
+          "-c", 'model_providers.cli-hop.name="CLI Hop"',
+          "-c", `model_providers.cli-hop.base_url=${JSON.stringify(`${endpoint}/v1`)}`,
+          "-c", 'model_providers.cli-hop.env_key="CLI_HOP_API_KEY"',
+          "-c", 'model_providers.cli-hop.wire_api="responses"'
         );
       }
       if (options.args) args.push(...options.args);
       return args;
     },
-    // Installer parity: deploy ~/.codex/config.toml, maxplus.config.toml,
-    // and auth.json so `codex` works standalone, not only through maxplus-ai.
+    // Installer parity: deploy ~/.codex/config.toml, cli-hop.config.toml,
+    // and auth.json so `codex` works standalone, not only through cli-hop.
     prepare: async ({ apiKey, endpoint, selected }) =>
       new CodexConfigService().apply({ apiKey, endpoint, model: selected }),
     scrubShellConfig: () =>
@@ -141,9 +141,9 @@ export const CUSTOMIZABLE_AGENTS: Agent[] = [
         "CODEX_ACCESS_TOKEN",
         "OPENAI_BASE_URL",
         "OPENAI_API_KEY",
-        "MAXPLUS_CODEX_API_KEY",
-        "MAXPLUS_OC_CODEX_API_KEY",
-        "MAXPLUS_HERMES_CODEX_API_KEY",
+        "CLI_HOP_CODEX_API_KEY",
+        "CLI_HOP_OC_CODEX_API_KEY",
+        "CLI_HOP_HERMES_CODEX_API_KEY",
       ]),
     installUrl: "https://developers.openai.com/codex/cli/",
   },
@@ -171,11 +171,11 @@ export const CUSTOMIZABLE_AGENTS: Agent[] = [
       });
     },
     scrubShellConfig: () => scrubShellRc([
-      "MAXPLUS_API_KEY",
-      "MAXPLUS_AI_API_KEY",
-      "MAXPLUS_CODEX_API_KEY",
-      "MAXPLUS_OC_CODEX_API_KEY",
-      "MAXPLUS_HERMES_CODEX_API_KEY",
+      "CLI_HOP_API_KEY",
+      "CLI_HOP_AI_API_KEY",
+      "CLI_HOP_CODEX_API_KEY",
+      "CLI_HOP_OC_CODEX_API_KEY",
+      "CLI_HOP_HERMES_CODEX_API_KEY",
       "CUSTOM_API_KEY",
     ]),
     installUrl: "https://x.ai/cli",

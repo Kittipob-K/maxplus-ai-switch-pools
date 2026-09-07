@@ -4,9 +4,9 @@ import { join } from "node:path";
 import { writeSecureFile } from "./secure-file.js";
 
 /**
- * Merge-writes the Grok Build CLI config the same way the MaxPlus one-line
+ * Merge-writes the Grok Build CLI config the same way the CLI Hop one-line
  * installer (grok-install.sh) does: a managed `[model."id"]` block inside
- * `# >>> MaxPlus AI Grok Build >>>` / `<<<` markers, preserving every
+ * `# >>> CLI Hop Grok Build >>>` / `<<<` markers, preserving every
  * unrelated TOML section, key and comment the user already has.
  *
  * The block uses the Responses wire (`api_backend = "responses"`) with the
@@ -14,13 +14,13 @@ import { writeSecureFile } from "./secure-file.js";
  * environment variable (installer parity).
  */
 
-export const GROK_CONFIG_MARKER_START = "# >>> MaxPlus AI Grok Build >>>";
-export const GROK_CONFIG_MARKER_END = "# <<< MaxPlus AI Grok Build <<<";
+export const GROK_CONFIG_MARKER_START = "# >>> CLI Hop Grok Build >>>";
+export const GROK_CONFIG_MARKER_END = "# <<< CLI Hop Grok Build <<<";
 
 export interface GrokConfigInput {
   /** Primary API key (ccsk-...). */
   apiKey: string;
-  /** Endpoint root WITHOUT /v1, e.g. https://api.maxplus-ai.cc */
+  /** Endpoint root WITHOUT /v1, e.g. https://api.cli-hop.cc */
   endpoint: string;
   /** Model id to configure, e.g. grok-4.5. */
   model: string;
@@ -35,10 +35,10 @@ function isSectionHeading(line: string): boolean {
     /^[ \t]*\[\[[^[\]]+\]\][ \t]*(#.*)?$/.test(line);
 }
 
-/** `[model."id"]` / `[model."other"]` heading of a MaxPlus-managed model. */
+/** `[model."id"]` / `[model."other"]` heading of a CLI Hop-managed model. */
 function isManagedModelHeading(line: string, modelId: string): boolean {
   const bare = line.replace(/#.*$/, "").replace(/[[\]"\s]/g, "");
-  return bare === `model.${modelId}` || bare === "model.maxplus-grok-build";
+  return bare === `model.${modelId}` || bare === "model.cli-hop-grok-build";
 }
 
 function renderManagedBlock(input: GrokConfigInput): string {
@@ -61,7 +61,7 @@ function renderManagedBlock(input: GrokConfigInput): string {
 }
 
 /**
- * Replace any previous MaxPlus-managed content (marker blocks, stale managed
+ * Replace any previous CLI Hop-managed content (marker blocks, stale managed
  * `[model."id"]` sections, and managed scalars inside `[models]`,
  * `[endpoints]`, `[marketplace]`) while keeping every other line
  * byte-for-byte, then append the fresh sections and managed model block.

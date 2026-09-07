@@ -1,12 +1,12 @@
-# maxplus-ai-switch-pools
+# cli-hop
 
-CLI that launches agent CLIs against the MaxPlus AI gateway using one
+CLI that launches agent CLIs against the CLI Hop gateway using one
 user-configured credential.
 
 ## Language
 
 **Primary API Key**:
-The single MaxPlus key the user configures once; every supported agent CLI is
+The single CLI Hop key the user configures once; every supported agent CLI is
 launched with it.
 _Avoid_: token, secret, password
 
@@ -23,7 +23,7 @@ fallback location on systems with no usable keychain.
 _Avoid_: config, profile
 
 **Agent Config**:
-A per-agent file the tool writes so that agent talks to MaxPlus when launched
+A per-agent file the tool writes so that agent talks to CLI Hop when launched
 directly. Always a *derived copy* of the Credential Store + Settings File —
 never an independent input, and freely overwritten or removed by the tool.
 _Avoid_: credential (it may contain one, but it is not where one is entered)

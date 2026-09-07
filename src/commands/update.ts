@@ -7,7 +7,7 @@ function noticeLine(current: string, latest: string): string {
   return `Update available: ${ui.dim(current)} ${ui.dim(sym.arrowRight)} ${ui.strong(ui.val(latest))}`;
 }
 
-/** `maxplus-ai --update`: check npm and install the latest release. */
+/** `cli-hop --update`: check npm and install the latest release. */
 export async function performUpdate(): Promise<void> {
   ui.h1("Checking for updates");
 
@@ -34,7 +34,7 @@ export async function performUpdate(): Promise<void> {
     process.exit(1);
   }
 
-  ui.ok(`Updated to ${check.latestVersion}. Re-run maxplus-ai to use it.`);
+  ui.ok(`Updated to ${check.latestVersion}. Re-run cli-hop to use it.`);
 }
 
 export const updateCommand = new Command("update")
@@ -61,7 +61,7 @@ const NOTICE_GRACE_MS = 1_500;
  */
 export function startUpdateNotice(): void {
   if (!process.stdout.isTTY) return;
-  if (process.env.MAXPLUS_NO_UPDATE_CHECK === "1") return;
+  if (process.env.CLI_HOP_NO_UPDATE_CHECK === "1") return;
 
   const abort = new AbortController();
   let line: string | undefined;
@@ -78,7 +78,7 @@ export function startUpdateNotice(): void {
       if (check.status === "update-available" && check.latestVersion) {
         line =
           `${noticeLine(check.currentVersion, check.latestVersion)}` +
-          ` — run ${ui.code("maxplus-ai --update")}`;
+          ` — run ${ui.code("cli-hop --update")}`;
       }
     })
     .catch(() => {

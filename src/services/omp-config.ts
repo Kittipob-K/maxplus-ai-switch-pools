@@ -6,19 +6,19 @@ import type { RemoteModel } from "../types.js";
 import { writeSecureFile } from "./secure-file.js";
 
 /** Provider id written into models.yml; also omp's --model prefix. */
-export const OMP_PROVIDER_ID = "maxplus";
+export const OMP_PROVIDER_ID = "cli-hop";
 
 /**
  * Env var NAME stored as the provider's apiKey in models.yml. omp resolves
  * `apiKey` values first as an env var, so the secret stays in the child
  * process environment (exported from Settings) and never on disk.
  */
-export const OMP_API_KEY_ENV = "MAXPLUS_API_KEY";
+export const OMP_API_KEY_ENV = "CLI_HOP_API_KEY";
 
 export interface OmpModelsInput {
-  /** Endpoint root WITHOUT /v1, e.g. https://api.maxplus-ai.cc */
+  /** Endpoint root WITHOUT /v1, e.g. https://api.cli-hop.cc */
   endpoint: string;
-  /** Full catalogue to write (all pools from the MaxPlus API). */
+  /** Full catalogue to write (all pools from the CLI Hop API). */
   models: RemoteModel[];
   /** Selected model id; written first in the models list. */
   selected: string;
@@ -40,8 +40,8 @@ export function ompApiFor(model: RemoteModel): string {
 
 /**
  * Keeps the user's existing models.yml (other providers, comments aside)
- * and replaces only our `providers.maxplus` block so `omp` / `/model`
- * always show the live MaxPlus catalogue with the correct wire per model.
+ * and replaces only our `providers.cli-hop` block so `omp` / `/model`
+ * always show the live CLI Hop catalogue with the correct wire per model.
  */
 export class OmpConfigService {
   readonly modelsPath: string;
@@ -91,7 +91,7 @@ export class OmpConfigService {
     providers[OMP_PROVIDER_ID] = {
       baseUrl: `${input.endpoint.replace(/\/+$/, "")}/v1`,
       apiKey: OMP_API_KEY_ENV,
-      // MaxPlus speaks Bearer auth on both wires (like the /models API).
+      // CLI Hop speaks Bearer auth on both wires (like the /models API).
       authHeader: true,
       // Anthropic-fronted proxies commonly reject the `strict` tool field.
       disableStrictTools: true,

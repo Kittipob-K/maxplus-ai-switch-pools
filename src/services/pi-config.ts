@@ -6,24 +6,24 @@ import { stripJsonComments } from "./jsonc.js";
 import { writeSecureFile } from "./secure-file.js";
 
 /** Provider id written into Pi's models.json; also Pi's --model prefix. */
-export const PI_PROVIDER_ID = "maxplus";
+export const PI_PROVIDER_ID = "cli-hop";
 
 /**
  * The environment variable reference stored in Pi's models.json. The secret
- * is supplied only in the child environment from maxplus-ai Settings.
+ * is supplied only in the child environment from cli-hop Settings.
  */
-export const PI_API_KEY_ENV = "MAXPLUS_API_KEY";
+export const PI_API_KEY_ENV = "CLI_HOP_API_KEY";
 
 export interface PiModelsInput {
-  /** Endpoint root WITHOUT /v1, e.g. https://api.maxplus-ai.cc */
+  /** Endpoint root WITHOUT /v1, e.g. https://api.cli-hop.cc */
   endpoint: string;
-  /** Full catalogue to write (all pools from the MaxPlus API). */
+  /** Full catalogue to write (all pools from the CLI Hop API). */
   models: RemoteModel[];
   /** Selected model id; written first in the models list. */
   selected: string;
 }
 
-/** Resolve the Pi wire API for a MaxPlus model from its advertised capabilities. */
+/** Resolve the Pi wire API for a CLI Hop model from its advertised capabilities. */
 export function piApiFor(model: RemoteModel): string {
   const apis = model.apis ?? [];
   if (apis.includes("messages")) return "anthropic-messages";
@@ -33,8 +33,8 @@ export function piApiFor(model: RemoteModel): string {
 }
 
 /**
- * Keeps the user's existing Pi providers and replaces only providers.maxplus
- * so Pi's /model picker always reflects the selected MaxPlus catalogue.
+ * Keeps the user's existing Pi providers and replaces only providers.cli-hop
+ * so Pi's /model picker always reflects the selected CLI Hop catalogue.
  */
 export class PiConfigService {
   readonly modelsPath: string;

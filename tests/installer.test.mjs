@@ -69,23 +69,23 @@ test("installSpecFor returns undefined for unknown agents and platforms", () => 
 });
 
 test("isInstalled finds a stub executable placed on PATH", async () => {
-  const binDir = await mkdtemp(join(tmpdir(), "maxplus-path-"));
-  const stub = join(binDir, "maxplus-stub-cmd");
+  const binDir = await mkdtemp(join(tmpdir(), "cli-hop-path-"));
+  const stub = join(binDir, "cli-hop-stub-cmd");
   await writeFile(stub, "#!/bin/sh\nexit 0\n");
   await chmod(stub, 0o755);
 
   const originalPath = process.env.PATH;
   try {
     process.env.PATH = binDir;
-    assert.equal(await isInstalled("maxplus-stub-cmd"), true);
-    assert.equal(await isInstalled("maxplus-missing-cmd"), false);
+    assert.equal(await isInstalled("cli-hop-stub-cmd"), true);
+    assert.equal(await isInstalled("cli-hop-missing-cmd"), false);
   } finally {
     process.env.PATH = originalPath;
   }
 });
 
 test("isInstalled ignores the cmux grok wrapper when Grok Build is absent", async () => {
-  const binDir = await mkdtemp(join(tmpdir(), "maxplus-grok-wrapper-"));
+  const binDir = await mkdtemp(join(tmpdir(), "cli-hop-grok-wrapper-"));
   const wrapper = join(binDir, "grok");
   await writeFile(wrapper, "#!/usr/bin/env bash\n# cmux grok wrapper - installs cmux hooks\n");
   await chmod(wrapper, 0o755);

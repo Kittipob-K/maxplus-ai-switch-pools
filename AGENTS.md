@@ -4,9 +4,9 @@ Guidance for AI coding agents working in this repository.
 
 ## What this project is
 
-`maxplus-ai-switch-pools` is a TypeScript ESM CLI (binary: **`maxplus-ai`**) that
+`cli-hop` is a TypeScript ESM CLI (binary: **`cli-hop`**) that
 switches AI pools/models and configures agent CLIs to
-use the MaxPlus AI gateway with one primary API key. See `README.md` for
+use the CLI Hop gateway with one primary API key. See `README.md` for
 user-facing docs.
 
 ## Commands
@@ -16,7 +16,7 @@ npm run build        # tsc -> dist/ (ESM)
 npx tsc --noEmit     # typecheck only
 npm test             # build + node:test unit/config/E2E suite
 npm run dev          # run via tsx without building
-node dist/index.js   # built CLI; `maxplus-ai` = npm link global
+node dist/index.js   # built CLI; `cli-hop` = npm link global
 ```
 
 - Node.js **>= 22** required (`Promise.withResolvers` is used).
@@ -32,28 +32,28 @@ src/
   prompts/section-tabs.ts custom interactive AGENTS | SETTINGS tab/list prompt
   commands/
     customize.ts        default tabbed flow (agent -> fetch models -> launch)
-    settings.ts         API key / base URL / reset actions + `maxplus-ai settings`
-    run.ts              non-interactive launch: maxplus-ai run [-p pool] [-m model] [-- args]
+    settings.ts         API key / base URL / reset actions + `cli-hop settings`
+    run.ts              non-interactive launch: cli-hop run [-p pool] [-m model] [-- args]
     list.ts             model list (remote, --local fallback)
     update.ts           `--update` self-update flow + passive "update available" notice
   services/
     settings.ts         SettingsService: Credential Store — keychain-first API key, base URL,
-                        last-used agent + ~/.config/maxplus-ai/settings.json
-    keychain.ts         openKeychain(): OS keychain entry (service maxplus-ai, account = username); null when unavailable/disabled
+                        last-used agent + ~/.config/cli-hop/settings.json
+    keychain.ts         openKeychain(): OS keychain entry (service cli-hop, account = username); null when unavailable/disabled
     prereq.ts           ensurePrerequisites(): inline prompts for missing baseUrl/apiKey
-    pool.ts             PoolService: local pools + MaxPlus /models API (Bearer, pagination)
+    pool.ts             PoolService: local pools + CLI Hop /models API (Bearer, pagination)
     update.ts           npm registry check (24h cache file), semver compare, `npm install -g` spawn
     agent.ts            AgentService: prepare launch plan, clean env, spawn agent
     claude-config.ts    installer-parity writes of ~/.claude.json + ~/.claude/settings.json
     codex-config.ts     installer-parity ~/.codex config.toml (marker-managed regions),
-                        maxplus.config.toml profile, and auth.json (0600)
+                        cli-hop.config.toml profile, and auth.json (0600)
     grok-config.ts      merge-write ~/.grok/config.toml managed [model] block
                         (marker-delimited, key inline, responses wire)
     omp-config.ts       merge-write ~/.omp/agent/models.yml (per-model wire api
-                        from MaxPlus /models capabilities)
+                        from CLI Hop /models capabilities)
     pi-config.ts        merge-write ~/.pi/agent/models.json
     opencode-config.ts  merge-write ~/.config/opencode/opencode.json (dual-wire:
-                        maxplus=anthropic, maxplus-openai=openai-compatible,
+                        cli-hop=anthropic, cli-hop-openai=openai-compatible,
                         model/small_model refs; migrates legacy single-provider
                         chat models)
     shell-scrub.ts      shared stale rc-export scrubber for installer parity
@@ -66,7 +66,7 @@ src/
 ### Core invariants (do not break)
 
 1. **Unset before export.** `AgentService.applyUnset()` removes inherited
-   Anthropic/OpenAI/MaxPlus proxy credentials from `process.env`, then
+   Anthropic/OpenAI/CLI Hop proxy credentials from `process.env`, then
    `prepareEnv()` re-injects only Settings values into the child env. The
    child process must never see inherited proxy credentials.
 2. **One key, all agents.** The primary API key is injected using each registry
@@ -115,8 +115,8 @@ real config:
 
 - Point settings elsewhere: `export XDG_CONFIG_HOME=$(mktemp -d)` **before**
   writing any test settings file (past mistake: a test seeded the real
-  `~/.config/maxplus-ai/settings.json`).
-- Set `MAXPLUS_DISABLE_KEYCHAIN=1` in any process that exercises settings —
+  `~/.config/cli-hop/settings.json`).
+- Set `CLI_HOP_DISABLE_KEYCHAIN=1` in any process that exercises settings —
   HOME/XDG redirection does **not** isolate the OS keychain, and tests must not
   touch (or prompt against) the developer's real one. Unit-test keychain
   behavior by passing a fake `{ keychain }` to `SettingsService`.
@@ -130,7 +130,7 @@ real config:
 
 ## Repository notes
 
-- Binary name is **`maxplus-ai`** everywhere (package.json `bin`, help text,
+- Binary name is **`cli-hop`** everywhere (package.json `bin`, help text,
   docs). The old name `masp` must not reappear.
 - Settings/config paths always honor `XDG_CONFIG_HOME` and are created `0700`
   / files `0600` (the fallback home for the API key; keychain-first per ADR 0001).

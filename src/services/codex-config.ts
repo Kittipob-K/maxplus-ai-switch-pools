@@ -4,31 +4,31 @@ import { join } from "node:path";
 import { writeSecureFile } from "./secure-file.js";
 
 /**
- * Writes the persistent Codex CLI configuration the same way the MaxPlus
+ * Writes the persistent Codex CLI configuration the same way the CLI Hop
  * one-line installer (codex-install.sh) does:
  *
- *   ~/.codex/config.toml         managed MaxPlus scalars + provider table
- *   ~/.codex/maxplus.config.toml profile copy of the managed scalars
+ *   ~/.codex/config.toml         managed CLI Hop scalars + provider table
+ *   ~/.codex/cli-hop.config.toml profile copy of the managed scalars
  *   ~/.codex/auth.json           { OPENAI_API_KEY: <primary key> } (0600)
  *
  * config.toml is MERGED, unlike the installer's full rewrite: two
  * marker-delimited regions are replaced in place on every run — the managed
  * scalars at the top of the file (before any user table can start) and the
- * `[model_providers.maxplus]` table at the end (so it cannot swallow user
+ * `[model_providers.cli-hop]` table at the end (so it cannot swallow user
  * top-level keys below it). Outside the markers, occurrences of the managed
- * scalars and of a user-copied `[model_providers.maxplus]` table are removed
+ * scalars and of a user-copied `[model_providers.cli-hop]` table are removed
  * because a duplicate key would make Codex reject the whole file. Every
  * other line of the user's config is preserved byte-for-byte.
  */
 
-export const CODEX_SCALARS_MARKER_START = "# >>> MaxPlus AI Codex >>>";
-export const CODEX_SCALARS_MARKER_END = "# <<< MaxPlus AI Codex <<<";
-export const CODEX_PROVIDER_MARKER_START = "# >>> MaxPlus AI Codex provider >>>";
-export const CODEX_PROVIDER_MARKER_END = "# <<< MaxPlus AI Codex provider <<<";
+export const CODEX_SCALARS_MARKER_START = "# >>> CLI Hop Codex >>>";
+export const CODEX_SCALARS_MARKER_END = "# <<< CLI Hop Codex <<<";
+export const CODEX_PROVIDER_MARKER_START = "# >>> CLI Hop Codex provider >>>";
+export const CODEX_PROVIDER_MARKER_END = "# <<< CLI Hop Codex provider <<<";
 
 /** Top-level keys the managed scalar region owns (installer parity). */
 const MANAGED_SCALARS: ReadonlyArray<[key: string, value: string]> = [
-  ["model_provider", '"maxplus"'],
+  ["model_provider", '"cli-hop"'],
   ["model", '"<model>"'],
   ["disable_response_storage", "true"],
   ["model_reasoning_effort", '"max"'],
@@ -41,7 +41,7 @@ const MANAGED_SCALAR_KEYS = new Set(MANAGED_SCALARS.map(([key]) => key));
 export interface CodexConfigInput {
   /** Primary API key (ccsk-...). */
   apiKey: string;
-  /** Endpoint root WITHOUT /v1, e.g. https://api.maxplus-ai.cc */
+  /** Endpoint root WITHOUT /v1, e.g. https://api.cli-hop.cc */
   endpoint: string;
   /** Model id to configure, e.g. gpt-5.6-sol. */
   model: string;
@@ -56,8 +56,8 @@ function isManagedScalar(line: string): boolean {
   return key !== undefined && MANAGED_SCALAR_KEYS.has(key);
 }
 
-function isMaxplusProviderHeading(line: string): boolean {
-  return /^[ \t]*\[model_providers\.maxplus\][ \t]*(?:#.*)?$/.test(line);
+function isClihopProviderHeading(line: string): boolean {
+  return /^[ \t]*\[model_providers\.cli-hop\][ \t]*(?:#.*)?$/.test(line);
 }
 
 function renderScalarRegion(model: string): string {
@@ -71,8 +71,8 @@ function renderScalarRegion(model: string): string {
 function renderProviderRegion(baseUrl: string): string {
   return [
     CODEX_PROVIDER_MARKER_START,
-    "[model_providers.maxplus]",
-    'name = "MaxPlus AI"',
+    "[model_providers.cli-hop]",
+    'name = "CLI Hop"',
     `base_url = "${baseUrl}"`,
     'wire_api = "responses"',
     "requires_openai_auth = true",
@@ -118,7 +118,7 @@ export function mergeCodexToml(existing: string, input: CodexConfigInput): strin
       continue;
     }
 
-    if (isMaxplusProviderHeading(line)) {
+    if (isClihopProviderHeading(line)) {
       skippingProviderTable = true;
       insideAnyTable = true;
       continue;
@@ -155,7 +155,7 @@ export class CodexConfigService {
   }
 
   get profilePath(): string {
-    return join(this.codexHome, "maxplus.config.toml");
+    return join(this.codexHome, "cli-hop.config.toml");
   }
 
   get authPath(): string {

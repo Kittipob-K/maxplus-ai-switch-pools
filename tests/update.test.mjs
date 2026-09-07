@@ -42,15 +42,15 @@ test("isNewerVersion compares semantic versions", () => {
 });
 
 test("checkForUpdate hits the registry once, then serves from the 24h cache", async (t) => {
-  const root = await mkdtemp(join(tmpdir(), "maxplus-update-"));
+  const root = await mkdtemp(join(tmpdir(), "cli-hop-update-"));
   const configDir = join(root, "config");
-  await mkdir(join(configDir, "maxplus-ai"), { recursive: true });
+  await mkdir(join(configDir, "cli-hop"), { recursive: true });
   t.after(() => rm(root, { recursive: true, force: true }));
 
   let hits = 0;
   const server = http.createServer((request, response) => {
     hits += 1;
-    assert.equal(request.url, "/maxplus-ai-switch-pools/latest");
+    assert.equal(request.url, "/cli-hop/latest");
     response.setHeader("content-type", "application/json");
     response.end(JSON.stringify({ version: "99.0.0" }));
   });
@@ -69,8 +69,8 @@ test("checkForUpdate hits the registry once, then serves from the 24h cache", as
       env: {
         ...process.env,
         XDG_CONFIG_HOME: configDir,
-        MAXPLUS_DISABLE_KEYCHAIN: "1",
-        MAXPLUS_REGISTRY_URL: registryUrl,
+        CLI_HOP_DISABLE_KEYCHAIN: "1",
+        CLI_HOP_REGISTRY_URL: registryUrl,
         ...extraEnv,
       },
     });
@@ -98,16 +98,16 @@ test("checkForUpdate hits the registry once, then serves from the 24h cache", as
 
   // The managed cache file holds the answer with a valid timestamp.
   const cache = JSON.parse(
-    await readFile(join(configDir, "maxplus-ai", "update-check.json"), "utf8")
+    await readFile(join(configDir, "cli-hop", "update-check.json"), "utf8")
   );
   assert.equal(cache.latestVersion, "99.0.0");
   assert.ok(!Number.isNaN(Date.parse(cache.lastChecked)));
 });
 
 test("checkForUpdate reports up-to-date for an older registry version", async (t) => {
-  const root = await mkdtemp(join(tmpdir(), "maxplus-update-old-"));
+  const root = await mkdtemp(join(tmpdir(), "cli-hop-update-old-"));
   const configDir = join(root, "config");
-  await mkdir(join(configDir, "maxplus-ai"), { recursive: true });
+  await mkdir(join(configDir, "cli-hop"), { recursive: true });
   t.after(() => rm(root, { recursive: true, force: true }));
 
   const server = http.createServer((request, response) => {
@@ -126,8 +126,8 @@ test("checkForUpdate reports up-to-date for an older registry version", async (t
     env: {
       ...process.env,
       XDG_CONFIG_HOME: configDir,
-      MAXPLUS_DISABLE_KEYCHAIN: "1",
-      MAXPLUS_REGISTRY_URL: `http://127.0.0.1:${server.address().port}`,
+      CLI_HOP_DISABLE_KEYCHAIN: "1",
+      CLI_HOP_REGISTRY_URL: `http://127.0.0.1:${server.address().port}`,
     },
   });
   assert.equal(res.code, 0, res.stderr || res.stdout);
@@ -137,9 +137,9 @@ test("checkForUpdate reports up-to-date for an older registry version", async (t
 });
 
 test("checkForUpdate degrades to unknown when the registry is unreachable", async (t) => {
-  const root = await mkdtemp(join(tmpdir(), "maxplus-update-offline-"));
+  const root = await mkdtemp(join(tmpdir(), "cli-hop-update-offline-"));
   const configDir = join(root, "config");
-  await mkdir(join(configDir, "maxplus-ai"), { recursive: true });
+  await mkdir(join(configDir, "cli-hop"), { recursive: true });
   t.after(() => rm(root, { recursive: true, force: true }));
 
   const script = `
@@ -151,8 +151,8 @@ test("checkForUpdate degrades to unknown when the registry is unreachable", asyn
     env: {
       ...process.env,
       XDG_CONFIG_HOME: configDir,
-      MAXPLUS_DISABLE_KEYCHAIN: "1",
-      MAXPLUS_REGISTRY_URL: "http://127.0.0.1:1",
+      CLI_HOP_DISABLE_KEYCHAIN: "1",
+      CLI_HOP_REGISTRY_URL: "http://127.0.0.1:1",
     },
   });
   assert.equal(res.code, 0, res.stderr || res.stdout);
@@ -163,7 +163,7 @@ test("checkForUpdate degrades to unknown when the registry is unreachable", asyn
 });
 
 test("installUpdate spawns npm install -g without a shell", async (t) => {
-  const root = await mkdtemp(join(tmpdir(), "maxplus-npm-stub-"));
+  const root = await mkdtemp(join(tmpdir(), "cli-hop-npm-stub-"));
   const binDir = join(root, "bin");
   await mkdir(binDir, { recursive: true });
   const npmPath = join(binDir, "npm");
@@ -189,11 +189,11 @@ test("installUpdate spawns npm install -g without a shell", async (t) => {
   }
 
   const recorded = JSON.parse(await readFile(capture, "utf8"));
-  assert.deepEqual(recorded.argv, ["install", "-g", "maxplus-ai-switch-pools@latest"]);
+  assert.deepEqual(recorded.argv, ["install", "-g", "cli-hop@latest"]);
 });
 
 test("--update installs the newer release through the stub npm", async (t) => {
-  const root = await mkdtemp(join(tmpdir(), "maxplus-update-e2e-"));
+  const root = await mkdtemp(join(tmpdir(), "cli-hop-update-e2e-"));
   const homeDir = join(root, "home");
   const configDir = join(root, "config");
   const binDir = join(root, "bin");
@@ -201,12 +201,12 @@ test("--update installs the newer release through the stub npm", async (t) => {
   await Promise.all([
     mkdir(homeDir),
     mkdir(binDir),
-    mkdir(join(configDir, "maxplus-ai"), { recursive: true }),
+    mkdir(join(configDir, "cli-hop"), { recursive: true }),
   ]);
   t.after(() => rm(root, { recursive: true, force: true }));
 
   const server = http.createServer((request, response) => {
-    assert.equal(request.url, "/maxplus-ai-switch-pools/latest");
+    assert.equal(request.url, "/cli-hop/latest");
     response.setHeader("content-type", "application/json");
     response.end(JSON.stringify({ version: "99.0.0" }));
   });
@@ -228,8 +228,8 @@ test("--update installs the newer release through the stub npm", async (t) => {
       XDG_CONFIG_HOME: configDir,
       PATH: `${binDir}:${process.env.PATH}`,
       NPM_CAPTURE: capturePath,
-      MAXPLUS_DISABLE_KEYCHAIN: "1",
-      MAXPLUS_REGISTRY_URL: `http://127.0.0.1:${server.address().port}`,
+      CLI_HOP_DISABLE_KEYCHAIN: "1",
+      CLI_HOP_REGISTRY_URL: `http://127.0.0.1:${server.address().port}`,
     },
     stdio: ["ignore", "pipe", "pipe"],
   });
@@ -238,24 +238,24 @@ test("--update installs the newer release through the stub npm", async (t) => {
   assert.match(result.stdout, /99\.0\.0/);
   assert.match(result.stdout, /Updated to 99\.0\.0/);
   const recorded = JSON.parse(await readFile(capturePath, "utf8"));
-  assert.deepEqual(recorded.argv, ["install", "-g", "maxplus-ai-switch-pools@latest"]);
+  assert.deepEqual(recorded.argv, ["install", "-g", "cli-hop@latest"]);
 
   // A successful update refreshes the cache with the new version.
   const cache = JSON.parse(
-    await readFile(join(configDir, "maxplus-ai", "update-check.json"), "utf8")
+    await readFile(join(configDir, "cli-hop", "update-check.json"), "utf8")
   );
   assert.equal(cache.latestVersion, "99.0.0");
 });
 
 test("--update reports up-to-date without touching npm", async (t) => {
-  const root = await mkdtemp(join(tmpdir(), "maxplus-update-fresh-"));
+  const root = await mkdtemp(join(tmpdir(), "cli-hop-update-fresh-"));
   const homeDir = join(root, "home");
   const configDir = join(root, "config");
   const binDir = join(root, "bin");
   await Promise.all([
     mkdir(homeDir),
     mkdir(binDir),
-    mkdir(join(configDir, "maxplus-ai"), { recursive: true }),
+    mkdir(join(configDir, "cli-hop"), { recursive: true }),
   ]);
   t.after(() => rm(root, { recursive: true, force: true }));
 
@@ -279,8 +279,8 @@ test("--update reports up-to-date without touching npm", async (t) => {
       HOME: homeDir,
       XDG_CONFIG_HOME: configDir,
       PATH: `${binDir}:${process.env.PATH}`,
-      MAXPLUS_DISABLE_KEYCHAIN: "1",
-      MAXPLUS_REGISTRY_URL: `http://127.0.0.1:${server.address().port}`,
+      CLI_HOP_DISABLE_KEYCHAIN: "1",
+      CLI_HOP_REGISTRY_URL: `http://127.0.0.1:${server.address().port}`,
     },
     stdio: ["ignore", "pipe", "pipe"],
   });
@@ -290,14 +290,14 @@ test("--update reports up-to-date without touching npm", async (t) => {
 });
 
 test("startup notice prints an update hint before a subcommand runs", async (t) => {
-  const root = await mkdtemp(join(tmpdir(), "maxplus-notice-e2e-"));
+  const root = await mkdtemp(join(tmpdir(), "cli-hop-notice-e2e-"));
   const homeDir = join(root, "home");
   const configDir = join(root, "config");
   const binDir = join(root, "bin");
   await Promise.all([
     mkdir(homeDir),
     mkdir(binDir),
-    mkdir(join(configDir, "maxplus-ai"), { recursive: true }),
+    mkdir(join(configDir, "cli-hop"), { recursive: true }),
   ]);
   t.after(() => rm(root, { recursive: true, force: true }));
 
@@ -320,8 +320,8 @@ test("startup notice prints an update hint before a subcommand runs", async (t) 
         HOME: homeDir,
         XDG_CONFIG_HOME: configDir,
         PATH: `${binDir}:${process.env.PATH}`,
-        MAXPLUS_DISABLE_KEYCHAIN: "1",
-        MAXPLUS_REGISTRY_URL: `http://127.0.0.1:${server.address().port}`,
+        CLI_HOP_DISABLE_KEYCHAIN: "1",
+        CLI_HOP_REGISTRY_URL: `http://127.0.0.1:${server.address().port}`,
         TERM: "xterm-256color",
       },
       stdio: ["ignore", "pipe", "pipe"],
@@ -330,5 +330,5 @@ test("startup notice prints an update hint before a subcommand runs", async (t) 
 
   assert.equal(result.code, 0, result.stderr || result.stdout);
   assert.match(result.stdout, /Update available/);
-  assert.match(result.stdout, /maxplus-ai --update/);
+  assert.match(result.stdout, /cli-hop --update/);
 });

@@ -36,7 +36,7 @@ keychain and removes it from the file (no migration script).
 - Ordinary `save()` calls never delete a keychain item — clearing the key is
   an explicit `setApiKey(undefined)`, so a transient keychain failure cannot
   wipe the key through an unrelated settings write.
-- Keychain item identity: service `maxplus-ai`, account = login username.
+- Keychain item identity: service `cli-hop`, account = login username.
 - Key rotation propagates to Agent Configs on the next wrapper launch (that
   flow already re-applies them); the post-save message tells the user to run
-  `maxplus-ai <agent>` once after changing the key.
+  `cli-hop <agent>` once after changing the key.

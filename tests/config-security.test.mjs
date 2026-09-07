@@ -11,7 +11,7 @@ import { OmpConfigService } from "../dist/services/omp-config.js";
 import { OpenCodeConfigService } from "../dist/services/opencode-config.js";
 
 test("Pi config merge is secret-free and uses private permissions", async () => {
-  const directory = await mkdtemp(join(tmpdir(), "maxplus-pi-"));
+  const directory = await mkdtemp(join(tmpdir(), "cli-hop-pi-"));
   const modelsPath = join(directory, "agent", "models.json");
   await mkdir(dirname(modelsPath), { recursive: true });
   await writeFile(modelsPath, '{\n  // keep provider\n  "providers": { "existing": {} }\n}\n');
@@ -25,15 +25,15 @@ test("Pi config merge is secret-free and uses private permissions", async () => 
   const raw = await readFile(modelsPath, "utf8");
   const config = JSON.parse(raw);
   assert.ok(config.providers.existing);
-  assert.equal(config.providers.maxplus.apiKey, "$MAXPLUS_API_KEY");
+  assert.equal(config.providers["cli-hop"].apiKey, "$CLI_HOP_API_KEY");
   assert.equal(raw.includes("test-key"), false);
   assert.equal((await stat(dirname(modelsPath))).mode & 0o777, 0o700);
   assert.equal((await stat(modelsPath)).mode & 0o777, 0o600);
 });
 
 test("Settings save enforces private file permissions", async () => {
-  const directory = await mkdtemp(join(tmpdir(), "maxplus-settings-"));
-  const filePath = join(directory, "maxplus-ai", "settings.json");
+  const directory = await mkdtemp(join(tmpdir(), "cli-hop-settings-"));
+  const filePath = join(directory, "cli-hop", "settings.json");
   const settings = new SettingsService(filePath, { keychain: null });
 
   await settings.save({ apiKey: "test-key", baseUrl: "https://example.com/v1" });
@@ -43,7 +43,7 @@ test("Settings save enforces private file permissions", async () => {
 });
 
 test("Claude config refuses to overwrite malformed JSON", async () => {
-  const directory = await mkdtemp(join(tmpdir(), "maxplus-claude-"));
+  const directory = await mkdtemp(join(tmpdir(), "cli-hop-claude-"));
   const claudeJsonPath = join(directory, ".claude.json");
   const settingsPath = join(directory, ".claude", "settings.json");
   await writeFile(claudeJsonPath, "{ malformed");
@@ -60,7 +60,7 @@ test("Claude config refuses to overwrite malformed JSON", async () => {
 });
 
 test("Claude root config preserves the parent directory permissions", async () => {
-  const directory = await mkdtemp(join(tmpdir(), "maxplus-claude-parent-"));
+  const directory = await mkdtemp(join(tmpdir(), "cli-hop-claude-parent-"));
   await chmod(directory, 0o750);
   const claudeJsonPath = join(directory, ".claude.json");
   const settingsPath = join(directory, ".claude", "settings.json");
@@ -78,7 +78,7 @@ test("Claude root config preserves the parent directory permissions", async () =
 });
 
 test("OMP config refuses an invalid providers value", async () => {
-  const directory = await mkdtemp(join(tmpdir(), "maxplus-omp-"));
+  const directory = await mkdtemp(join(tmpdir(), "cli-hop-omp-"));
   const modelsPath = join(directory, "agent", "models.yml");
   await mkdir(dirname(modelsPath), { recursive: true });
   await writeFile(modelsPath, "providers: invalid\n");
@@ -95,7 +95,7 @@ test("OMP config refuses an invalid providers value", async () => {
 });
 
 async function openCodeCase(seed, expectedMessage, apis = ["chat_completions"]) {
-  const directory = await mkdtemp(join(tmpdir(), "maxplus-opencode-"));
+  const directory = await mkdtemp(join(tmpdir(), "cli-hop-opencode-"));
   const configPath = join(directory, "opencode.json");
   await writeFile(configPath, seed);
 
@@ -113,26 +113,26 @@ async function openCodeCase(seed, expectedMessage, apis = ["chat_completions"]) 
 test("OpenCode config refuses a malformed provider value", () =>
   openCodeCase('{"provider":"invalid"}', /invalid provider object/));
 
-test("OpenCode config refuses a malformed maxplus provider value", () =>
-  openCodeCase('{"provider":{"maxplus":"invalid"}}', /invalid maxplus provider object/));
+test("OpenCode config refuses a malformed cli-hop provider value", () =>
+  openCodeCase('{"provider":{"cli-hop":"invalid"}}', /invalid cli-hop provider object/));
 
-test("OpenCode config refuses a malformed maxplus options value", () =>
-  openCodeCase('{"provider":{"maxplus":{"options":[]}}}', /invalid maxplus options object/));
+test("OpenCode config refuses a malformed cli-hop options value", () =>
+  openCodeCase('{"provider":{"cli-hop":{"options":[]}}}', /invalid cli-hop options object/));
 
-test("OpenCode config refuses a malformed maxplus models value", () =>
-  openCodeCase('{"provider":{"maxplus":{"models":"invalid"}}}', /invalid maxplus models value|invalid maxplus models object/));
+test("OpenCode config refuses a malformed cli-hop models value", () =>
+  openCodeCase('{"provider":{"cli-hop":{"models":"invalid"}}}', /invalid cli-hop models value|invalid cli-hop models object/));
 
 test("OpenCode config refuses a malformed entry for a catalogue model", () =>
   openCodeCase(
-    '{"provider":{"maxplus":{"models":{"model":"invalid"}}}}',
-    /invalid maxplus model configuration for model/,
+    '{"provider":{"cli-hop":{"models":{"model":"invalid"}}}}',
+    /invalid cli-hop model configuration for model/,
     ["messages"]
   ));
 
 test("OpenCode config refuses a malformed entry in the openai-compatible provider", () =>
   openCodeCase(
-    '{"provider":{"maxplus-openai":{"models":{"model":"invalid"}}}}',
-    /invalid maxplus-openai model configuration for model/
+    '{"provider":{"cli-hop-openai":{"models":{"model":"invalid"}}}}',
+    /invalid cli-hop-openai model configuration for model/
   ));
 
 test("OpenCode config refuses to overwrite malformed JSON", () =>

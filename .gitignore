@@ -1,6 +1,6 @@
 # Dependencies
 node_modules/
-docs/script-maxplus-ai/
+docs/script-cli-hop/
 
 # Build output
 dist/

@@ -5,7 +5,7 @@ import { join } from "node:path";
 /**
  * Remove stale `export VAR=...` / `set -xe VAR ...` lines for the given
  * credential variables from common shell rc files (installer parity with the
- * MaxPlus one-line installers). Returns the files that were modified.
+ * CLI Hop one-line installers). Returns the files that were modified.
  */
 export async function scrubShellRc(
   vars: readonly string[],

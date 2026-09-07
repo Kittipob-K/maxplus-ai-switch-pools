@@ -13,7 +13,7 @@ import { apiKeyEnvVarsFor, baseUrlEnvVarsFor, DEFAULT_MODELS_BASE_URL } from "..
 import * as ui from "../ui.js";
 
 /**
- * Default maxplus-ai flow: choose an AGENTS or SETTINGS section, then pick an
+ * Default cli-hop flow: choose an AGENTS or SETTINGS section, then pick an
  * agent to customize, clear (unset) inherited environment, and launch it.
  */
 async function pickPool(pools: Pool[]): Promise<string> {
@@ -102,8 +102,8 @@ export const customizeCommand = new Command("customize")
           ui.ok(`${ui.envvar(urlVars[0] + "=")}${ui.url(endpoint)}`);
         }
 
-        // 3. Pull the model list from the MaxPlus API and let the user choose.
-        const spinner = new ui.Spinner("Fetching models from MaxPlus API");
+        // 3. Pull the model list from the CLI Hop API and let the user choose.
+        const spinner = new ui.Spinner("Fetching models from CLI Hop API");
         const { pools, source, error, models } = await poolService.resolvePools({
           apiKey: settings.apiKey,
           baseUrl: settings.baseUrl,
@@ -121,7 +121,7 @@ export const customizeCommand = new Command("customize")
           pool.agents.some((candidate) => candidate.id === agent.id)
         );
         if (compatiblePools.length === 0) {
-          ui.danger(`No available MaxPlus models support ${agent.name}.`);
+          ui.danger(`No available CLI Hop models support ${agent.name}.`);
           continue;
         }
         const poolId = await pickPool(compatiblePools);

@@ -11,8 +11,8 @@ import { VERSION } from "./version.js";
 const program = new Command();
 
 program
-  .name("maxplus-ai")
-  .description("MaxPlus AI Switch Pools - Switch AI models and agents easily")
+  .name("cli-hop")
+  .description("CLI Hop Switch Pools - Switch AI models and agents easily")
   .version(VERSION)
   .option("--update", "Check npm for a newer release and install it", false)
   .hook("preAction", (_command, action) => {
@@ -25,12 +25,12 @@ program.addCommand(customizeCommand);
 program.addCommand(settingsCommand);
 program.addCommand(updateCommand);
 
-// Default flow: opening `maxplus-ai` with no subcommand launches the
+// Default flow: opening `cli-hop` with no subcommand launches the
 // top-level AGENTS | SETTINGS interactive menu.
 const userArgs = process.argv.slice(2);
 if (userArgs.length === 0) {
   startUpdateNotice();
-  await customizeCommand.parseAsync(["node", "maxplus-ai"]);
+  await customizeCommand.parseAsync(["node", "cli-hop"]);
 } else if (userArgs[0] === "--update") {
   await performUpdate();
 } else {

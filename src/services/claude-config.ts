@@ -5,15 +5,15 @@ import { endpointFromModelsBaseUrl } from "./endpoint.js";
 import { writeSecureFile } from "./secure-file.js";
 
 /**
- * Configures Claude Code the same way the MaxPlus one-line installer does:
+ * Configures Claude Code the same way the CLI Hop one-line installer does:
  * writes ~/.claude.json and ~/.claude/settings.json so the `claude` CLI
- * talks to the MaxPlus endpoint with the user's key — no onboarding,
+ * talks to the CLI Hop endpoint with the user's key — no onboarding,
  * no stale OAuth credentials, key pre-approved.
  */
 export interface ClaudeConfigInput {
   /** Primary API key (ccsk-...). */
   apiKey: string;
-  /** Endpoint root WITHOUT the /v1 suffix, e.g. https://api.maxplus-ai.cc */
+  /** Endpoint root WITHOUT the /v1 suffix, e.g. https://api.cli-hop.cc */
   endpoint: string;
   /** Model id to configure, e.g. claude-opus-4-8. */
   model: string;

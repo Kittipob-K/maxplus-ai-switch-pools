@@ -15,7 +15,7 @@ export async function handleSettingsAction(
 
   if (action.type === "apiKey") {
     const apiKey = await password({
-      message: `${ui.envvar("MAXPLUS_API_KEY")} =`,
+      message: `${ui.envvar("CLI_HOP_API_KEY")} =`,
       validate: (value) => value.trim() ? true : "API key cannot be empty",
     });
     await settingsService.setApiKey(apiKey.trim());
@@ -27,11 +27,11 @@ export async function handleSettingsAction(
 
   if (action.type === "baseUrl") {
     const baseUrl = await input({
-      message: `${ui.envvar("MAXPLUS_BASE_URL")} =`,
+      message: `${ui.envvar("CLI_HOP_BASE_URL")} =`,
       default: settings.baseUrl ?? DEFAULT_MODELS_BASE_URL,
       validate: (value) => {
         try { new URL(value.trim()); return true; }
-        catch { return "Enter a valid URL, e.g. https://api.maxplus-ai.cc/v1"; }
+        catch { return "Enter a valid URL, e.g. https://api.cli-hop.cc/v1"; }
       },
     });
     await settingsService.save({ ...settings, baseUrl: baseUrl.trim() });
@@ -52,7 +52,7 @@ export async function handleSettingsAction(
   return "back";
 }
 
-/** Interactive settings menu — also exposed as `maxplus-ai settings`. */
+/** Interactive settings menu — also exposed as `cli-hop settings`. */
 export async function runSettingsMenu(): Promise<SettingsMenuResult> {
   const settingsService = new SettingsService();
   for (;;) {
@@ -70,7 +70,7 @@ export async function runSettingsMenu(): Promise<SettingsMenuResult> {
 }
 
 export const settingsCommand = new Command("settings")
-  .description("Configure maxplus-ai settings, e.g. the primary API key")
+  .description("Configure cli-hop settings, e.g. the primary API key")
   .action(async () => {
     try {
       await runSettingsMenu();

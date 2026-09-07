@@ -5,8 +5,8 @@ import type { RemoteModel } from "../types.js";
 import { stripJsonComments } from "./jsonc.js";
 import { writeSecureFile } from "./secure-file.js";
 const OPEN_CODE_SCHEMA_URL = "https://opencode.ai/config.json";
-const OPEN_CODE_PROVIDER_ID = "maxplus";
-const OPEN_CODE_OPENAI_PROVIDER_ID = "maxplus-openai";
+const OPEN_CODE_PROVIDER_ID = "cli-hop";
+const OPEN_CODE_OPENAI_PROVIDER_ID = "cli-hop-openai";
 const FIX_HINT = " - fix it manually before switching pools";
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -23,7 +23,7 @@ export interface OpenCodeConfigResult {
   /** Path of the opencode.json file written. */
   path: string;
   /**
-   * Model ids kept from a previous write because the live MaxPlus catalogue no
+   * Model ids kept from a previous write because the live CLI Hop catalogue no
    * longer lists them. Opencode still offers them and requests against them
    * fail, so callers should surface these to the user. Empty when the
    * catalogue was not live (models API unreachable), since then absence is not
@@ -49,8 +49,8 @@ function providerRefFor(
 }
 
 /**
- * Merge-writes provider.maxplus in opencode.json, keeping the user's other
- * providers, extra options and hand-tuned model entries. Only the live MaxPlus
+ * Merge-writes provider.cli-hop in opencode.json, keeping the user's other
+ * providers, extra options and hand-tuned model entries. Only the live CLI Hop
  * catalogue and baseURL/apiKey are replaced, so a gateway rename never erases a
  * limit the user set by hand.
  */
@@ -114,16 +114,16 @@ export class OpenCodeConfigService {
     }
 
     // Migration: releases before the dual-wire split wrote chat_completions
-    // models into the single `maxplus` provider. Entries the live catalogue
+    // models into the single `cli-hop` provider. Entries the live catalogue
     // now advertises as chat-capable move to the OpenAI-compatible provider
     // (keeping their saved names/limits) instead of lingering on the
     // Anthropic wire.
-    const legacyMaxplusModels = existingProvidersById[OPEN_CODE_PROVIDER_ID].models;
+    const legacyClihopModels = existingProvidersById[OPEN_CODE_PROVIDER_ID].models;
     const chatIds = new Set(chatModels.map((model) => model.id));
     const anthropicExisting: Record<string, unknown> = {};
     const migratedModels: Record<string, unknown> = {};
-    if (isRecord(legacyMaxplusModels)) {
-      for (const [modelId, modelConfig] of Object.entries(legacyMaxplusModels)) {
+    if (isRecord(legacyClihopModels)) {
+      for (const [modelId, modelConfig] of Object.entries(legacyClihopModels)) {
         if (chatIds.has(modelId)) migratedModels[modelId] = modelConfig;
         else anthropicExisting[modelId] = modelConfig;
       }
@@ -169,7 +169,7 @@ export class OpenCodeConfigService {
       }
 
       // Only a live catalogue proves a model is gone: without wire capabilities
-      // maxplus-ai fell back to its built-in pools (or the gateway advertised
+      // cli-hop fell back to its built-in pools (or the gateway advertised
       // none), so an absent id is not evidence of retirement. A model present
       // but on another wire is still served by the gateway - opencode just
       // reaches it through the other provider.
@@ -203,22 +203,22 @@ export class OpenCodeConfigService {
     providers[OPEN_CODE_PROVIDER_ID] = {
       ...existingProvidersById[OPEN_CODE_PROVIDER_ID],
       npm: "@ai-sdk/anthropic",
-      name: "MaxPlus",
+      name: "CLI Hop",
       options: {
         ...(existingProvidersById[OPEN_CODE_PROVIDER_ID].options ?? {}),
         baseURL: `${input.endpoint.replace(/\/+$/, "")}/v1`,
-        apiKey: "{env:MAXPLUS_API_KEY}",
+        apiKey: "{env:CLI_HOP_API_KEY}",
       },
       models: anthropic.models,
     };
     providers[OPEN_CODE_OPENAI_PROVIDER_ID] = {
       ...existingProvidersById[OPEN_CODE_OPENAI_PROVIDER_ID],
       npm: "@ai-sdk/openai-compatible",
-      name: "MaxPlus OpenAI-compatible",
+      name: "CLI Hop OpenAI-compatible",
       options: {
         ...(existingProvidersById[OPEN_CODE_OPENAI_PROVIDER_ID].options ?? {}),
         baseURL: `${input.endpoint.replace(/\/+$/, "")}/v1`,
-        apiKey: "{env:MAXPLUS_API_KEY}",
+        apiKey: "{env:CLI_HOP_API_KEY}",
       },
       models: openai.models,
     };

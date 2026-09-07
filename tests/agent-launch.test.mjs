@@ -4,7 +4,7 @@ import test from "node:test";
 import { AgentService } from "../dist/services/agent.js";
 import { getAgentById } from "../dist/services/registry.js";
 
-test("Aider launch plan uses the MaxPlus OpenAI-compatible endpoint", () => {
+test("Aider launch plan uses the CLI Hop OpenAI-compatible endpoint", () => {
   const agent = getAgentById("aider");
   assert.ok(agent);
 
@@ -35,17 +35,17 @@ test("Codex launch plan uses per-invocation Responses provider overrides", () =>
     "--model",
     "gpt-compatible",
     "-c",
-    'model_provider="maxplus"',
+    'model_provider="cli-hop"',
     "-c",
-    'model_providers.maxplus.name="MaxPlus"',
+    'model_providers.cli-hop.name="CLI Hop"',
     "-c",
-    'model_providers.maxplus.base_url="https://gateway.example.com/v1"',
+    'model_providers.cli-hop.base_url="https://gateway.example.com/v1"',
     "-c",
-    'model_providers.maxplus.env_key="MAXPLUS_API_KEY"',
+    'model_providers.cli-hop.env_key="CLI_HOP_API_KEY"',
     "-c",
-    'model_providers.maxplus.wire_api="responses"',
+    'model_providers.cli-hop.wire_api="responses"',
   ]);
-  assert.equal(plan.env.MAXPLUS_API_KEY, "test-key");
+  assert.equal(plan.env.CLI_HOP_API_KEY, "test-key");
 });
 
 test("Grok Build launch plan forwards only user args and keeps the key out of the environment", () => {
@@ -65,7 +65,7 @@ test("Grok Build launch plan forwards only user args and keeps the key out of th
     assert.equal(plan.command, "grok");
     assert.deepEqual(plan.args, ["-p", "hello"]);
     assert.equal(plan.env.GROK_HOME, undefined);
-    assert.equal(plan.env.MAXPLUS_API_KEY, undefined);
+    assert.equal(plan.env.CLI_HOP_API_KEY, undefined);
   } finally {
     if (originalGrokHome === undefined) delete process.env.GROK_HOME;
     else process.env.GROK_HOME = originalGrokHome;
@@ -101,7 +101,7 @@ test("missing agent executable reports an actionable installation error", async 
       {
         id: "missing",
         name: "Missing Agent",
-        command: "maxplus-command-that-does-not-exist",
+        command: "cli-hop-command-that-does-not-exist",
         apiKeyEnvVars: [],
         baseUrlEnvVars: [],
         supportedProtocols: ["chat_completions"],

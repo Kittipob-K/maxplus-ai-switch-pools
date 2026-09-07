@@ -28,7 +28,7 @@ function fakeKeychain({ available = true } = {}) {
 }
 
 async function fixture() {
-  const directory = await mkdtemp(join(tmpdir(), "maxplus-store-"));
+  const directory = await mkdtemp(join(tmpdir(), "cli-hop-store-"));
   const filePath = join(directory, "settings.json");
   await mkdir(directory, { recursive: true });
   return { filePath };

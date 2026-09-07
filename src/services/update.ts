@@ -6,7 +6,7 @@ import { VERSION } from "../version.js";
 import { writeSecureFile } from "./secure-file.js";
 
 /** Published npm package that provides this CLI. */
-export const UPDATE_PACKAGE_NAME = "maxplus-ai-switch-pools";
+export const UPDATE_PACKAGE_NAME = "cli-hop";
 
 const DEFAULT_REGISTRY = "https://registry.npmjs.org";
 const DEFAULT_CHECK_INTERVAL_MS = 24 * 60 * 60 * 1000;
@@ -30,7 +30,7 @@ interface UpdateCache {
 }
 
 function registryBase(): string {
-  return (process.env.MAXPLUS_REGISTRY_URL ?? DEFAULT_REGISTRY).replace(/\/+$/, "");
+  return (process.env.CLI_HOP_REGISTRY_URL ?? DEFAULT_REGISTRY).replace(/\/+$/, "");
 }
 
 /**
@@ -73,10 +73,10 @@ export async function fetchLatestVersion(
   return version;
 }
 
-/** Managed cache file: ${XDG_CONFIG_HOME:-~/.config}/maxplus-ai/update-check.json */
+/** Managed cache file: ${XDG_CONFIG_HOME:-~/.config}/cli-hop/update-check.json */
 export function updateCachePath(): string {
   const base = process.env.XDG_CONFIG_HOME || join(homedir(), ".config");
-  return join(base, "maxplus-ai", "update-check.json");
+  return join(base, "cli-hop", "update-check.json");
 }
 
 async function readUpdateCache(): Promise<UpdateCache | undefined> {

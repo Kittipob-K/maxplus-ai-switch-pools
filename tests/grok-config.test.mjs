@@ -56,7 +56,7 @@ test("Grok merge replaces a stale managed model section and keeps user content",
     contextWindow: 1000000,
   });
 
-  // A [model."id"] section without MaxPlus markers belongs to the user and
+  // A [model."id"] section without CLI Hop markers belongs to the user and
   // is preserved (installer parity).
   assert.equal(merged.includes('api_key = "user-own-key"'), true);
   assert.equal(merged.includes('theme = "dark"'), true);
@@ -106,7 +106,7 @@ test("Grok merge replaces a block written by the official installer", () => {
     'web_search = "grok-4.5"',
     "",
     "[endpoints]",
-    'models_base_url = "https://api.maxplus-ai.cc"',
+    'models_base_url = "https://api["cli-hop"].cc"',
     "",
     "[marketplace]",
     "default_skills_installs_purged = true",
@@ -114,7 +114,7 @@ test("Grok merge replaces a block written by the official installer", () => {
     GROK_CONFIG_MARKER_START,
     '[model."grok-4.5"]',
     'model = "grok-4.5"',
-    'base_url = "https://api.maxplus-ai.cc/v1"',
+    'base_url = "https://api["cli-hop"].cc/v1"',
     'name = "Grok 4.5"',
     'description = "Grok 4.5"',
     'api_key = "ccsk-old"',
@@ -138,8 +138,8 @@ test("Grok merge replaces a block written by the official installer", () => {
 
 test("Grok merge drops a managed model section even without the marker end", () => {
   const existing = [
-    '[model."maxplus-grok-build"]',
-    'model = "maxplus-grok-build"',
+    '[model."cli-hop-grok-build"]',
+    'model = "cli-hop-grok-build"',
     'api_key = "old"',
     "",
     "[user]",
@@ -152,13 +152,13 @@ test("Grok merge drops a managed model section even without the marker end", () 
     model: "grok-4.5",
   });
 
-  assert.equal(merged.includes("maxplus-grok-build"), false);
+  assert.equal(merged.includes("cli-hop-grok-build"), false);
   assert.equal(merged.includes("old"), false);
   assert.equal(merged.includes("kept = true"), true);
 });
 
 test("Grok config service writes owner-only config and merges in place", async () => {
-  const directory = await mkdtemp(join(tmpdir(), "maxplus-grok-"));
+  const directory = await mkdtemp(join(tmpdir(), "cli-hop-grok-"));
   const configPath = join(directory, "config.toml");
   await writeFile(configPath, "[user]\nkept = true\n");
 

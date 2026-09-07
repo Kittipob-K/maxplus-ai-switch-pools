@@ -183,7 +183,7 @@ export function logo(): void {
 
   // Hide logo if terminal is too narrow.
   if (width < logoWidth) {
-    writeLine(chalk.cyan.bold("MAXPLUS-AI"));
+    writeLine(chalk.cyan.bold("CLI_HOP-AI"));
     writeLine();
     return;
   }

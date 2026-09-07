@@ -7,7 +7,7 @@ import test from "node:test";
 import { OpenCodeConfigService } from "../dist/services/opencode-config.js";
 
 test("OpenCode config preserves other providers and references the key from env", async () => {
-  const directory = await mkdtemp(join(tmpdir(), "maxplus-opencode-"));
+  const directory = await mkdtemp(join(tmpdir(), "cli-hop-opencode-"));
   const configPath = join(directory, "opencode.json");
   await writeFile(
     configPath,
@@ -27,21 +27,21 @@ test("OpenCode config preserves other providers and references the key from env"
 
   const config = JSON.parse(await readFile(configPath, "utf8"));
   assert.equal(config.provider.existing.name, "Existing");
-  assert.equal(config.provider.maxplus.options.apiKey, "{env:MAXPLUS_API_KEY}");
+  assert.equal(config.provider["cli-hop"].options.apiKey, "{env:CLI_HOP_API_KEY}");
   assert.equal(
-    config.provider.maxplus.options.baseURL,
+    config.provider["cli-hop"].options.baseURL,
     "https://gateway.example.com/v1"
   );
   assert.equal(config.$schema, undefined);
-  assert.deepEqual(Object.keys(config.provider.maxplus.models), ["claude-model"]);
-  assert.deepEqual(Object.keys(config.provider["maxplus-openai"].models), ["chat-model"]);
-  assert.equal(config.model, "maxplus-openai/chat-model");
-  assert.equal(config.small_model, "maxplus-openai/chat-model");
+  assert.deepEqual(Object.keys(config.provider["cli-hop"].models), ["claude-model"]);
+  assert.deepEqual(Object.keys(config.provider["cli-hop-openai"].models), ["chat-model"]);
+  assert.equal(config.model, "cli-hop-openai/chat-model");
+  assert.equal(config.small_model, "cli-hop-openai/chat-model");
   assert.equal(JSON.stringify(config).includes("test-key"), false);
 });
 
 test("OpenCode config adds the schema only when it creates the file", async () => {
-  const directory = await mkdtemp(join(tmpdir(), "maxplus-opencode-"));
+  const directory = await mkdtemp(join(tmpdir(), "cli-hop-opencode-"));
   const configPath = join(directory, "opencode.json");
 
   const created = await new OpenCodeConfigService(configPath).apply({
@@ -53,8 +53,8 @@ test("OpenCode config adds the schema only when it creates the file", async () =
 
   const config = JSON.parse(await readFile(configPath, "utf8"));
   assert.equal(config.$schema, "https://opencode.ai/config.json");
-  assert.equal(config.model, "maxplus-openai/chat-model");
-  assert.deepEqual(Object.keys(config.provider["maxplus-openai"].models), ["chat-model"]);
+  assert.equal(config.model, "cli-hop-openai/chat-model");
+  assert.deepEqual(Object.keys(config.provider["cli-hop-openai"].models), ["chat-model"]);
 
   await writeFile(configPath, JSON.stringify({ theme: "dark" }));
 
@@ -70,14 +70,14 @@ test("OpenCode config adds the schema only when it creates the file", async () =
 });
 
 test("OpenCode config adds new models without dropping existing model settings", async () => {
-  const directory = await mkdtemp(join(tmpdir(), "maxplus-opencode-"));
+  const directory = await mkdtemp(join(tmpdir(), "cli-hop-opencode-"));
   const configPath = join(directory, "opencode.json");
   await writeFile(
     configPath,
     JSON.stringify({
       provider: {
         existing: { name: "Existing" },
-        maxplus: {
+        "cli-hop": {
           options: {
             timeout: 60000,
             headers: { "X-Workspace": "keep" },
@@ -115,19 +115,19 @@ test("OpenCode config adds new models without dropping existing model settings",
   const config = JSON.parse(await readFile(configPath, "utf8"));
   assert.equal(config.provider.existing.name, "Existing");
   assert.deepEqual(config.mcp.existing, { type: "remote" });
-  assert.equal(config.provider.maxplus.npm, "@ai-sdk/anthropic");
-  assert.equal(config.provider.maxplus.options.timeout, 60000);
-  assert.deepEqual(config.provider.maxplus.options.headers, { "X-Workspace": "keep" });
-  assert.deepEqual(Object.keys(config.provider.maxplus.models), ["old-model"]);
-  assert.equal(config.provider["maxplus-openai"].options.apiKey, "{env:MAXPLUS_API_KEY}");
-  assert.deepEqual(Object.keys(config.provider["maxplus-openai"].models), [
+  assert.equal(config.provider["cli-hop"].npm, "@ai-sdk/anthropic");
+  assert.equal(config.provider["cli-hop"].options.timeout, 60000);
+  assert.deepEqual(config.provider["cli-hop"].options.headers, { "X-Workspace": "keep" });
+  assert.deepEqual(Object.keys(config.provider["cli-hop"].models), ["old-model"]);
+  assert.equal(config.provider["cli-hop-openai"].options.apiKey, "{env:CLI_HOP_API_KEY}");
+  assert.deepEqual(Object.keys(config.provider["cli-hop-openai"].models), [
     "new-model",
     "shared-model",
   ]);
-  assert.deepEqual(config.provider["maxplus-openai"].models["new-model"], { name: "New model" });
-  assert.equal(config.provider["maxplus-openai"].models["shared-model"].name, "Updated shared name");
-  assert.deepEqual(config.provider["maxplus-openai"].models["shared-model"].limit, { output: 4096 });
-  assert.equal(config.model, "maxplus-openai/new-model");
+  assert.deepEqual(config.provider["cli-hop-openai"].models["new-model"], { name: "New model" });
+  assert.equal(config.provider["cli-hop-openai"].models["shared-model"].name, "Updated shared name");
+  assert.deepEqual(config.provider["cli-hop-openai"].models["shared-model"].limit, { output: 4096 });
+  assert.equal(config.model, "cli-hop-openai/new-model");
 
   const second = await new OpenCodeConfigService(configPath).apply({
     endpoint: "https://gateway.example.com",
@@ -137,7 +137,7 @@ test("OpenCode config adds new models without dropping existing model settings",
   assert.deepEqual(second.staleModels, ["old-model", "new-model", "shared-model"]);
 
   const updated = JSON.parse(await readFile(configPath, "utf8"));
-  assert.deepEqual(Object.keys(updated.provider["maxplus-openai"].models), [
+  assert.deepEqual(Object.keys(updated.provider["cli-hop-openai"].models), [
     "another-model",
     "new-model",
     "shared-model",
@@ -145,13 +145,13 @@ test("OpenCode config adds new models without dropping existing model settings",
 });
 
 test("OpenCode config resolves the model name from displayName, then the saved name, then the id", async () => {
-  const directory = await mkdtemp(join(tmpdir(), "maxplus-opencode-"));
+  const directory = await mkdtemp(join(tmpdir(), "cli-hop-opencode-"));
   const configPath = join(directory, "opencode.json");
   await writeFile(
     configPath,
     JSON.stringify({
       provider: {
-        maxplus: {
+        "cli-hop": {
           models: {
             "renamed-model": { name: "User edited label", limit: { context: 100000 } },
           },
@@ -170,7 +170,7 @@ test("OpenCode config resolves the model name from displayName, then the saved n
     selected: "renamed-model",
   });
 
-  const models = JSON.parse(await readFile(configPath, "utf8")).provider.maxplus.models;
+  const models = JSON.parse(await readFile(configPath, "utf8")).provider["cli-hop"].models;
   assert.equal(models["renamed-model"].name, "User edited label");
   assert.deepEqual(models["renamed-model"].limit, { context: 100000 });
   assert.equal(models["gateway-named"].name, "Gateway name");
@@ -178,13 +178,13 @@ test("OpenCode config resolves the model name from displayName, then the saved n
 });
 
 test("OpenCode config leaves entries outside the catalogue untouched", async () => {
-  const directory = await mkdtemp(join(tmpdir(), "maxplus-opencode-"));
+  const directory = await mkdtemp(join(tmpdir(), "cli-hop-opencode-"));
   const configPath = join(directory, "opencode.json");
   await writeFile(
     configPath,
     JSON.stringify({
       provider: {
-        maxplus: { models: { "stray-null": null, "stray-string": "kept" } },
+        "cli-hop": { models: { "stray-null": null, "stray-string": "kept" } },
       },
     })
   );
@@ -196,20 +196,20 @@ test("OpenCode config leaves entries outside the catalogue untouched", async () 
   });
 
   assert.deepEqual(result.staleModels, ["stray-null", "stray-string"]);
-  const models = JSON.parse(await readFile(configPath, "utf8")).provider.maxplus.models;
+  const models = JSON.parse(await readFile(configPath, "utf8")).provider["cli-hop"].models;
   assert.equal(models["stray-null"], null);
   assert.equal(models["stray-string"], "kept");
   assert.deepEqual(models.model, { name: "model" });
 });
 
 test("OpenCode config routes each wire to its own provider without calling models retired", async () => {
-  const directory = await mkdtemp(join(tmpdir(), "maxplus-opencode-"));
+  const directory = await mkdtemp(join(tmpdir(), "cli-hop-opencode-"));
   const configPath = join(directory, "opencode.json");
   await writeFile(
     configPath,
     JSON.stringify({
       provider: {
-        maxplus: { models: { "messages-only": { name: "Messages only" } } },
+        "cli-hop": { models: { "messages-only": { name: "Messages only" } } },
       },
     })
   );
@@ -226,13 +226,13 @@ test("OpenCode config routes each wire to its own provider without calling model
   // The gateway still serves both models; each wire just gets its own provider.
   assert.deepEqual(result.staleModels, []);
   const config = JSON.parse(await readFile(configPath, "utf8"));
-  assert.deepEqual(config.provider.maxplus.models["messages-only"], { name: "Messages only" });
-  assert.deepEqual(config.provider["maxplus-openai"].models["chat-model"], { name: "chat-model" });
-  assert.equal(config.model, "maxplus-openai/chat-model");
+  assert.deepEqual(config.provider["cli-hop"].models["messages-only"], { name: "Messages only" });
+  assert.deepEqual(config.provider["cli-hop-openai"].models["chat-model"], { name: "chat-model" });
+  assert.equal(config.model, "cli-hop-openai/chat-model");
 });
 
 test("OpenCode config prefers the Anthropic provider ref for a messages-only selection", async () => {
-  const directory = await mkdtemp(join(tmpdir(), "maxplus-opencode-"));
+  const directory = await mkdtemp(join(tmpdir(), "cli-hop-opencode-"));
   const configPath = join(directory, "opencode.json");
 
   await new OpenCodeConfigService(configPath).apply({
@@ -245,18 +245,18 @@ test("OpenCode config prefers the Anthropic provider ref for a messages-only sel
   });
 
   const config = JSON.parse(await readFile(configPath, "utf8"));
-  assert.equal(config.model, "maxplus/claude-model");
-  assert.equal(config.small_model, "maxplus/claude-model");
+  assert.equal(config.model, "cli-hop/claude-model");
+  assert.equal(config.small_model, "cli-hop/claude-model");
 });
 
 test("OpenCode config skips retired-model reporting when the gateway catalogue is unknown", async () => {
-  const directory = await mkdtemp(join(tmpdir(), "maxplus-opencode-"));
+  const directory = await mkdtemp(join(tmpdir(), "cli-hop-opencode-"));
   const configPath = join(directory, "opencode.json");
   await writeFile(
     configPath,
     JSON.stringify({
       provider: {
-        maxplus: {
+        "cli-hop": {
           models: {
             "saved-a": { name: "A" },
             "saved-b": { name: "B" },
@@ -266,7 +266,7 @@ test("OpenCode config skips retired-model reporting when the gateway catalogue i
     })
   );
 
-  // No capabilities means the models API was unreachable and maxplus-ai fell
+  // No capabilities means the models API was unreachable and cli-hop fell
   // back to its built-in pools, so the catalogue cannot prove anything is gone.
   const result = await new OpenCodeConfigService(configPath).apply({
     endpoint: "https://gateway.example.com",
@@ -275,19 +275,19 @@ test("OpenCode config skips retired-model reporting when the gateway catalogue i
   });
 
   assert.deepEqual(result.staleModels, []);
-  const models = JSON.parse(await readFile(configPath, "utf8")).provider.maxplus.models;
+  const models = JSON.parse(await readFile(configPath, "utf8")).provider["cli-hop"].models;
   assert.equal(models["saved-a"].name, "A");
   assert.equal(models["saved-b"].name, "B");
 });
 
 test("OpenCode config keeps a saved label when the gateway sends an empty displayName", async () => {
-  const directory = await mkdtemp(join(tmpdir(), "maxplus-opencode-"));
+  const directory = await mkdtemp(join(tmpdir(), "cli-hop-opencode-"));
   const configPath = join(directory, "opencode.json");
   await writeFile(
     configPath,
     JSON.stringify({
       provider: {
-        maxplus: { models: { "blank-name": { name: "Saved label" } } },
+        "cli-hop": { models: { "blank-name": { name: "Saved label" } } },
       },
     })
   );
@@ -298,12 +298,12 @@ test("OpenCode config keeps a saved label when the gateway sends an empty displa
     selected: "blank-name",
   });
 
-  const models = JSON.parse(await readFile(configPath, "utf8")).provider.maxplus.models;
+  const models = JSON.parse(await readFile(configPath, "utf8")).provider["cli-hop"].models;
   assert.equal(models["blank-name"].name, "Saved label");
 });
 
 test("OpenCode config keeps a pre-existing $schema value", async () => {
-  const directory = await mkdtemp(join(tmpdir(), "maxplus-opencode-"));
+  const directory = await mkdtemp(join(tmpdir(), "cli-hop-opencode-"));
   const configPath = join(directory, "opencode.json");
   await writeFile(
     configPath,

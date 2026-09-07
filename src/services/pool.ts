@@ -42,7 +42,7 @@ export class PoolService {
   }
 
   /**
-   * Pull the model/pool catalogue from the MaxPlus API
+   * Pull the model/pool catalogue from the CLI Hop API
    * (GET {baseUrl}/models with "Authorization: Bearer <apiKey>"),
    * following cursor pagination until exhausted.
    */
@@ -82,10 +82,10 @@ export class PoolService {
       if (response.data !== undefined && !Array.isArray(response.data)) {
         throw new Error("Models API returned invalid data");
       }
-      // maxplus.models groups ids by wire protocol (messages,
+      // cli-hop.models groups ids by wire protocol (messages,
       // chat_completions, responses, …) — invert it for per-model lookup.
       const caps = new Map<string, string[]>();
-      for (const [api, ids] of Object.entries(response.maxplus?.models ?? {})) {
+      for (const [api, ids] of Object.entries(response["cli-hop"]?.models ?? {})) {
         if (!Array.isArray(ids)) continue;
         for (const id of ids) caps.set(id, [...(caps.get(id) ?? []), api]);
       }
@@ -113,7 +113,7 @@ export class PoolService {
   }
 
   /**
-   * Build selectable Pool entries from remote models. Every MaxPlus model
+   * Build selectable Pool entries from remote models. Every CLI Hop model
    * is reachable through all registered agent CLIs; the wire protocol is
    * resolved per model (see RemoteModel.apis).
    */
@@ -129,7 +129,7 @@ export class PoolService {
   }
 
   /**
-   * Resolve the pools offered to the user: the live MaxPlus model catalogue
+   * Resolve the pools offered to the user: the live CLI Hop model catalogue
    * when an API key is configured and reachable, otherwise the built-in
    * local pools. Never throws — API problems are reported via `error`.
    */
@@ -149,7 +149,7 @@ export class PoolService {
     }
 
     try {
-      opts.onProgress?.("Fetching models from MaxPlus API…");
+      opts.onProgress?.("Fetching models from CLI Hop API…");
       const models = await this.fetchRemoteModels(
         opts.apiKey,
         opts.baseUrl ?? DEFAULT_MODELS_BASE_URL

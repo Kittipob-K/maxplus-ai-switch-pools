@@ -17,9 +17,9 @@ export class AgentService {
   /**
    * Build a clean environment for the agent: remove (unset) every env var
    * listed in agent.envToUnset, then export the primary API key and the
-   * MaxPlus base URL from settings into the env vars the agent's type reads
+   * CLI Hop base URL from settings into the env vars the agent's type reads
    * them from — equivalent to:
-   *   export ANTHROPIC_BASE_URL=https://api.maxplus-ai.cc
+   *   export ANTHROPIC_BASE_URL=https://api.cli-hop.cc
    *   export ANTHROPIC_API_KEY=<primary key>
    */
   prepareEnv(agent: Agent, options: RunOptions = {}): NodeJS.ProcessEnv {

@@ -5,6 +5,7 @@ import { PoolService } from "../services/pool.js";
 import { SettingsService } from "../services/settings.js";
 import { endpointFromModelsBaseUrl } from "../services/endpoint.js";
 import { getAgentById, listAgentOptions } from "../services/registry.js";
+import { ensureAgentInstalled } from "../services/installer.js";
 import { ensurePrerequisites } from "../services/prereq.js";
 import { runSettingsMenu } from "./settings.js";
 import type { Pool } from "../types.js";
@@ -64,6 +65,10 @@ export const customizeCommand = new Command("customize")
         }
 
         ui.h2(`Customizing ${agent.name}`);
+
+        // 0. Install check (next-best-step): offer the official installer
+        // when the CLI is missing; without it the later spawn would ENOENT.
+        if (!(await ensureAgentInstalled(agent))) continue;
 
         // 1. Unset inherited credentials/proxy env before anything else.
         const removed = agentService.applyUnset(agent);

@@ -4,6 +4,7 @@ import { PoolService } from "../services/pool.js";
 import { AgentService } from "../services/agent.js";
 import { SettingsService } from "../services/settings.js";
 import { ensurePrerequisites } from "../services/prereq.js";
+import { ensureAgentInstalled } from "../services/installer.js";
 import { endpointFromModelsBaseUrl } from "../services/endpoint.js";
 import {
   agentSupportsModel,
@@ -101,11 +102,14 @@ export const runCommand = new Command("run")
         ui.danger("Agent not found");
         process.exit(1);
       }
+
+      // Install check (next-best-step): offer the official installer when
+      // the CLI is missing; without it the spawn would fail with ENOENT.
+      if (!(await ensureAgentInstalled(agent))) process.exit(1);
       if (!options.model && !pool.agents.some((candidate) => candidate.id === agent.id)) {
         ui.danger(`${agent.name} does not support the protocols advertised by ${pool.model}`);
         process.exit(1);
       }
-
       const selectedModel = options.model ?? pool.model;
       if (models) {
         const remoteModel = models.find((model) => model.id === selectedModel);

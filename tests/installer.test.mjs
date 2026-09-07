@@ -1,0 +1,137 @@
+import assert from "node:assert/strict";
+import test from "node:test";
+import { mkdtemp, mkdir, writeFile, chmod } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+
+import {
+  AGENT_INSTALL_SPECS,
+  currentPlatformKey,
+  displayInstallCommand,
+  installSpecFor,
+  isInstalled,
+  runInstallCommand,
+} from "../dist/services/installer.js";
+import { CUSTOMIZABLE_AGENTS } from "../dist/services/registry.js";
+
+test("every registered agent has an install spec for all three platforms", () => {
+  for (const agent of CUSTOMIZABLE_AGENTS) {
+    const spec = AGENT_INSTALL_SPECS[agent.id];
+    assert.ok(spec, `${agent.id} missing from AGENT_INSTALL_SPECS`);
+  for (const platform of ["macos", "linux", "windows"]) {
+      const command = spec[platform];
+      assert.ok(command, `${agent.id} has no ${platform} install command`);
+      assert.ok(command.steps.length > 0, `${agent.id}/${platform} has empty steps`);
+      const display = displayInstallCommand(command);
+      assert.ok(display.length > 0, `${agent.id}/${platform} renders empty`);
+    }
+  }
+});
+
+test("install specs use the official commands from each agent's docs", () => {
+  const official = {
+    "claude-code": "https://claude.ai/install.sh",
+    omp: "https://omp.sh/install",
+    codex: "https://chatgpt.com/codex/install.sh",
+    grok: "https://x.ai/cli/install.sh",
+    opencode: "https://opencode.ai/install",
+  };
+  for (const [agentId, url] of Object.entries(official)) {
+    const display = displayInstallCommand(AGENT_INSTALL_SPECS[agentId].macos);
+    assert.ok(
+      display.includes(`curl -fsSL ${url}`),
+      `${agentId} macOS should curl ${url}, got: ${display}`
+    );
+  }
+  // Windows routes go through PowerShell one-liners; pi routes through npm
+  // with the officially documented --ignore-scripts flag.
+  assert.match(
+    displayInstallCommand(AGENT_INSTALL_SPECS["claude-code"].windows),
+    /irm https:\/\/claude\.ai\/install\.ps1 \| iex/
+  );
+  assert.match(
+    displayInstallCommand(AGENT_INSTALL_SPECS.pi.macos),
+    /npm install -g --ignore-scripts @earendil-works\/pi-coding-agent/
+  );
+  // Gemini CLI installs through the official npm package on every platform.
+  assert.match(
+    displayInstallCommand(AGENT_INSTALL_SPECS.gemini.windows),
+    /npm install -g @google\/gemini-cli/
+  );
+  // xAI has no npm package — never offer the third-party grok-cli.
+  assert.ok(
+    !JSON.stringify(AGENT_INSTALL_SPECS.grok).includes("grok-cli"),
+    "grok spec must not reference the third-party grok-cli package"
+  );
+});
+
+test("installSpecFor returns undefined for unknown agents and platforms", () => {
+  assert.equal(installSpecFor("not-an-agent"), undefined);
+  assert.equal(installSpecFor("claude-code", "solaris" /* not a PlatformKey */), undefined);
+  const spec = installSpecFor("claude-code", "macos");
+  assert.ok(spec);
+  assert.equal(spec.docsUrl, "https://code.claude.com/docs/en/setup");
+});
+
+test("isInstalled finds a stub executable placed on PATH", async () => {
+  const binDir = await mkdtemp(join(tmpdir(), "maxplus-path-"));
+  const stub = join(binDir, "maxplus-stub-cmd");
+  await writeFile(stub, "#!/bin/sh\nexit 0\n");
+  await chmod(stub, 0o755);
+
+  const originalPath = process.env.PATH;
+  try {
+    process.env.PATH = binDir;
+    assert.equal(await isInstalled("maxplus-stub-cmd"), true);
+    assert.equal(await isInstalled("maxplus-missing-cmd"), false);
+  } finally {
+    process.env.PATH = originalPath;
+  }
+});
+
+test("runInstallCommand executes a simple command and reports failure output", async () => {
+  const ok = await runInstallCommand({
+    steps: [{ kind: "script", shell: "sh", command: "echo hello-install" }],
+  });
+  assert.equal(ok.ok, true);
+
+  const failed = await runInstallCommand({
+    steps: [{ kind: "script", shell: "sh", command: "echo boom >&2; exit 3" }],
+  });
+  assert.equal(failed.ok, false);
+  assert.match(failed.output, /boom/);
+});
+
+test("sequential install steps stop at the first failing step", async () => {
+  const ran = [];
+  const result = await runInstallCommand(
+    {
+      steps: [{
+        kind: "sequential",
+        steps: [
+          { kind: "script", shell: "sh", command: "exit 1" },
+          { kind: "script", shell: "sh", command: "echo should-not-run" },
+        ],
+      }],
+    },
+    { onProgress: (msg) => ran.push(msg) }
+  );
+  assert.equal(result.ok, false);
+  assert.equal(
+    ran.filter((m) => m.includes("exit 1")).length,
+    2,
+    "outer sequential describes all steps, inner runProgress runs the failing one"
+  );
+  assert.ok(
+    !ran.some((m, i) => i > 0 && m.includes("should-not-run")),
+    "second step must not run after the first fails"
+  );
+});
+
+test("currentPlatformKey maps this test platform", () => {
+  const expected = process.platform === "darwin" ? "macos"
+    : process.platform === "linux" ? "linux"
+    : process.platform === "win32" ? "windows"
+    : undefined;
+  assert.equal(currentPlatformKey(), expected);
+});

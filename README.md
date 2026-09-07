@@ -5,8 +5,9 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 CLI for switching AI pools / models and configuring agent CLIs (Claude Code,
-Oh My Pi, Pi, Aider, OpenCode, Codex CLI, and Grok Build) to talk to the
-**MaxPlus AI** gateway — with one primary API key that works across every agent.
+Oh My Pi, Pi, Aider, OpenCode, Codex CLI, Grok Build, and Gemini CLI) to talk
+to the **MaxPlus AI** gateway — with one primary API key that works across
+every agent.
 
 ```bash
 $ maxplus-ai
@@ -35,8 +36,9 @@ $ maxplus-ai
   MaxPlus proxy credentials are removed first so only Settings values reach the
   child process.
 - **Protocol-aware selection** — models are matched to agents using the gateway's
-  advertised `messages`, `chat_completions`, and `responses` capabilities.
-  Unsupported model/agent combinations are hidden or rejected before launch.
+  advertised `messages`, `chat_completions`, `responses`, and `gemini`
+  capabilities. Unsupported model/agent combinations are hidden or rejected
+  before launch.
 - **Oh My Pi model sync** — every selection rewrites the `maxplus` provider in
   `~/.omp/agent/models.yml` with the live pool catalogue, choosing
   `anthropic-messages` when a model serves `/v1/messages` and its supported
@@ -62,6 +64,16 @@ $ maxplus-ai
 - **Prerequisite prompts (next-best-step)** — if base URL or API key are not
   configured yet, `maxplus-ai` asks for them inline (hidden input for the key)
   and saves them — no need to remember the right command.
+- **Agent install check (next-best-step)** — before launching, maxplus-ai
+  verifies the selected agent CLI is on `PATH`; when missing it offers to run
+  the agent's **official installer** for your platform (macOS / Linux /
+  Windows) right there, with a progress spinner and failure output. Decline,
+  non-interactive sessions, or exotic platforms degrade to printing the
+  official docs URL — the flow never crashes. Install commands are the
+  verbatim one-liners from each vendor's docs, e.g. `curl -fsSL
+  https://claude.ai/install.sh | bash` (Claude Code),
+  `npm install -g --ignore-scripts @earendil-works/pi-coding-agent` (Pi), and
+  `irm https://x.ai/cli/install.ps1 | iex` (Grok Build on Windows).
 - **Claude Code configuration (installer parity)** — mirrors the official
   MaxPlus installer: writes `~/.claude.json` and `~/.claude/settings.json`
   (endpoint, key, model, permissions, onboarding flags, key approval), removes
@@ -76,6 +88,13 @@ $ maxplus-ai
   pool base URL, key inline at 0600) plus the `[models]` / `[endpoints]` /
   `[marketplace]` defaults the official MaxPlus Grok installer writes, and can
   scrub legacy `MAXPLUS_*` exports from your shell rc files.
+- **Gemini CLI configuration (installer parity)** — writes `~/.gemini/.env`
+  (key, pool base URL, `GOOGLE_GENAI_USE_VERTEXAI=false`, default model at
+  0600; `GOOGLE_API_KEY` deliberately omitted to avoid duplicate-key warnings)
+  and merge-selects `security.auth.selectedType = "gemini-api-key"` in
+  `~/.gemini/settings.json`, mirroring the official MaxPlus `gemini-install.sh`.
+  Inherited `GEMINI_API_KEY` / `GOOGLE_GEMINI_*` exports are unset before
+  launch and can be scrubbed from your shell rc files.
 - **Update check** — a once-per-day background check against the npm registry
   prints an `Update available` notice (never blocking or crashing the flow);
   run `maxplus-ai --update` to self-update via `npm install -g`. Set
@@ -87,9 +106,8 @@ $ maxplus-ai
 ## Requirements
 
 - Node.js **>= 22**
-- The agent CLI you want to launch installed and on `PATH`
-  (e.g. `claude` from `@anthropic-ai/claude-code`)
-- A MaxPlus AI API key — create one at <https://maxplus-ai.cc/dashboard>
+- The agent CLI you want to launch — if it is missing, maxplus-ai offers to
+  install it with the official per-platform installer before launching.
 
 ## Install
 
@@ -117,7 +135,7 @@ npm install -g maxplus-ai-switch-pools
 # Run interactive setup (will prompt for API key and base URL)
 maxplus-ai
 
-# Select your agent CLI (Claude Code, Oh My Pi, Pi, Aider, OpenCode, Codex, or Grok Build)
+# Select your agent CLI (Claude Code, Oh My Pi, Pi, Aider, OpenCode, Codex, Grok Build, or Gemini CLI)
 # Choose a model/pool from the list
 # The agent launches automatically with your configuration
 ```
@@ -156,6 +174,7 @@ maxplus-ai run -a aider         # Launch Aider
 maxplus-ai run -a opencode      # Launch OpenCode
 maxplus-ai run -a codex         # Launch Codex CLI
 maxplus-ai run -a grok          # Launch Grok Build (xAI CLI)
+maxplus-ai run -a gemini        # Launch Gemini CLI (Google)
 ```
 
 ### Advanced options
@@ -191,8 +210,8 @@ maxplus-ai
 4. **Fetch models** from `GET {baseURL}/models` and pick a pool.
 5. **Filter compatibility** using each model's advertised wire protocols.
 6. **Write agent config when required** — Claude Code, Oh My Pi, Pi,
-   OpenCode, Codex, and Grok Build receive merge-safe configuration; Aider
-   uses launch-time environment/arguments only.
+   OpenCode, Codex, Grok Build, and Gemini CLI receive merge-safe
+   configuration; Aider uses launch-time environment/arguments only.
 7. **Launch** the agent with a clean environment.
 
 ## Agent compatibility
@@ -206,6 +225,7 @@ maxplus-ai
 | OpenCode | `--model maxplus/<model>` | `messages`, `chat_completions` | `~/.config/opencode/opencode.json` (dual-wire providers + `model`/`small_model` refs) |
 | Codex CLI | `--model <model>` | `responses` | `~/.codex/config.toml`, `maxplus.config.toml`, `auth.json` |
 | Grok Build | default from `~/.grok/config.toml` | `responses` | `~/.grok/config.toml` (managed block, key inline) |
+| Gemini CLI | default from `~/.gemini/.env` | `gemini` | `~/.gemini/.env`, `~/.gemini/settings.json` (auth-mode merge) |
 
 Agent config directories are created with `0700` permissions and managed files
 with `0600` permissions. Merge failures are reported instead of overwriting a

@@ -47,6 +47,8 @@ src/
                         maxplus.config.toml profile, and auth.json (0600)
     grok-config.ts      merge-write ~/.grok/config.toml managed [model] block
                         (marker-delimited, key inline, responses wire)
+    gemini-config.ts    installer-parity ~/.gemini/.env (key, pool base URL,
+                        model, 0600) + ~/.gemini/settings.json auth-mode merge
     omp-config.ts       merge-write ~/.omp/agent/models.yml (per-model wire api
                         from MaxPlus /models capabilities)
     pi-config.ts        merge-write ~/.pi/agent/models.json
@@ -56,6 +58,8 @@ src/
                         chat models)
     shell-scrub.ts      shared stale rc-export scrubber for installer parity
     secure-file.ts      atomic 0600 writes + managed-directory permissions
+    installer.ts        isInstalled() PATH scan + AGENT_INSTALL_SPECS official
+                        per-platform installers + ensureAgentInstalled() prompt
     registry.ts         agent adapters: env, protocols, args, config preparation
 ```
 

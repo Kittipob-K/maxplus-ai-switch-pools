@@ -101,12 +101,6 @@ const npmGlobal = (...pkgs: readonly string[]): InstallCommand => ({
  * docs URL when a platform has no verified command.
  */
 export const AGENT_INSTALL_SPECS: Record<string, AgentInstallSpec> = {
-  "gemini-cli": {
-    macos: npmGlobal("@google/gemini-cli"),
-    linux: npmGlobal("@google/gemini-cli"),
-    windows: npmGlobal("@google/gemini-cli"),
-    docsUrl: "https://github.com/google-gemini/gemini-cli",
-  },
   "claude-code": {
     macos: curlPipe("https://claude.ai/install.sh", "bash"),
     linux: curlPipe("https://claude.ai/install.sh", "bash"),

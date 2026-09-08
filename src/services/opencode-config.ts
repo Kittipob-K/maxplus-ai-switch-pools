@@ -1,9 +1,8 @@
-import { readFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import type { RemoteModel } from "../types.js";
-import { stripJsonComments } from "./jsonc.js";
 import { writeSecureFile } from "./secure-file.js";
+import { readJsonDocument } from "./config-document.js";
 const OPEN_CODE_SCHEMA_URL = "https://opencode.ai/config.json";
 const OPEN_CODE_PROVIDER_ID = "cli-hop";
 const OPEN_CODE_OPENAI_PROVIDER_ID = "cli-hop-openai";
@@ -63,20 +62,12 @@ export class OpenCodeConfigService {
   }
 
   async apply(input: OpenCodeConfigInput): Promise<OpenCodeConfigResult> {
-    let document: Record<string, unknown> = {};
-    let existed = false;
-    try {
-      const parsed: unknown = JSON.parse(stripJsonComments(await readFile(this.configPath, "utf8")));
-      if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
-        throw new Error("config root must be an object");
-      }
-      document = parsed as Record<string, unknown>;
-      existed = true;
-    } catch (error) {
-      if ((error as NodeJS.ErrnoException).code !== "ENOENT") {
-        throw new Error(`${this.configPath} is not valid JSON/JSONC${FIX_HINT}`);
-      }
-    }
+    const documentResult = await readJsonDocument(this.configPath, {
+      jsonc: true,
+      invalidMessage: (path) => `${path} is not valid JSON/JSONC${FIX_HINT}`,
+    });
+    const document = documentResult.value;
+    const existed = documentResult.existed;
 
     const existingProviders = document.provider;
     if (existingProviders !== undefined && !isRecord(existingProviders)) {

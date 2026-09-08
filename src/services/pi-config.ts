@@ -1,9 +1,8 @@
-import { readFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import type { RemoteModel } from "../types.js";
-import { stripJsonComments } from "./jsonc.js";
 import { writeSecureFile } from "./secure-file.js";
+import { readJsonDocument } from "./config-document.js";
 
 /** Provider id written into Pi's models.json; also Pi's --model prefix. */
 export const PI_PROVIDER_ID = "cli-hop";
@@ -48,21 +47,11 @@ export class PiConfigService {
    * overwrite an existing file that cannot be parsed as a JSON object.
    */
   async apply(input: PiModelsInput): Promise<string> {
-    let doc: Record<string, unknown> = {};
-    try {
-      const raw = await readFile(this.modelsPath, "utf8");
-      const parsed: unknown = JSON.parse(stripJsonComments(raw));
-      if (parsed === null || typeof parsed !== "object" || Array.isArray(parsed)) {
-        throw new Error("models.json root must be an object");
-      }
-      doc = parsed as Record<string, unknown>;
-    } catch (err) {
-      if ((err as NodeJS.ErrnoException).code !== "ENOENT") {
-        throw new Error(
-          `${this.modelsPath} exists but is not valid JSON - fix it manually before switching pools`
-        );
-      }
-    }
+    let { value: doc } = await readJsonDocument(this.modelsPath, {
+      jsonc: true,
+      invalidMessage: (path) =>
+        `${path} exists but is not valid JSON - fix it manually before switching pools`,
+    });
 
     const currentProviders = doc.providers;
     if (

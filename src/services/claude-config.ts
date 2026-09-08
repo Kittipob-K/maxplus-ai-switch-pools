@@ -3,6 +3,7 @@ import { homedir } from "node:os";
 import { join } from "node:path";
 import { endpointFromModelsBaseUrl } from "./endpoint.js";
 import { writeSecureFile } from "./secure-file.js";
+import { readJsonDocument } from "./config-document.js";
 
 /**
  * Configures Claude Code the same way the CLI Hop one-line installer does:
@@ -20,16 +21,9 @@ export interface ClaudeConfigInput {
 }
 
 async function readJson(file: string): Promise<Record<string, unknown>> {
-  try {
-    const parsed: unknown = JSON.parse(await readFile(file, "utf8"));
-    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
-      throw new Error("root must be an object");
-    }
-    return parsed as Record<string, unknown>;
-  } catch (error) {
-    if ((error as NodeJS.ErrnoException).code === "ENOENT") return {};
-    throw new Error(`${file} is not valid JSON - fix it before switching pools`);
-  }
+  return (await readJsonDocument(file, {
+    invalidMessage: (path) => `${path} is not valid JSON - fix it before switching pools`,
+  })).value;
 }
 
 async function writeJson(

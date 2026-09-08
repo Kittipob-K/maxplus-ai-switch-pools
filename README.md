@@ -226,15 +226,15 @@ agent shortcut, and returns to the Settings menu.
 
 1. **Choose an agent** — use the *AGENTS* tab; the most recently launched agent
    appears first as `(latest)`.
-3. **Unset** inherited credential env vars.
-4. **Check prerequisites** — prompts for `ANTHROPIC_BASE_URL` and
+2. **Unset** inherited credential env vars.
+3. **Check prerequisites** — prompts for `ANTHROPIC_BASE_URL` and
    `ANTHROPIC_API_KEY` if not configured, saves them to Settings.
-5. **Fetch models** from `GET {baseURL}/models` and pick a pool.
-6. **Filter compatibility** using each model's advertised wire protocols.
-7. **Write agent config when required** — Claude Code, Oh My Pi, Pi,
+4. **Fetch models** from `GET {baseURL}/models` and pick a pool.
+5. **Filter compatibility** using each model's advertised wire protocols.
+6. **Write agent config when required** — Claude Code, Oh My Pi, Pi,
    OpenCode, Codex, and Grok Build receive merge-safe
    configuration; Aider uses launch-time environment/arguments only.
-8. **Launch** the agent with a clean environment and remember it as `(latest)`.
+7. **Launch** the agent with a clean environment and remember it as `(latest)`.
 
 ## Agent compatibility
 

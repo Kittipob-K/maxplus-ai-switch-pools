@@ -42,8 +42,11 @@ src/
     keychain.ts         openKeychain(): OS keychain entry (service cli-hop, account = username); null when unavailable/disabled
     prereq.ts           ensurePrerequisites(): inline prompts for missing baseUrl/apiKey
     pool.ts             PoolService: local pools + CLI Hop /models API (Bearer, pagination)
+    launch.ts           LaunchCoordinator: shared pool selection, compatibility,
+                        config preparation, and agent launch policy
     update.ts           npm registry check (24h cache file), semver compare, `npm install -g` spawn
     agent.ts            AgentService: prepare launch plan, clean env, spawn agent
+    config-document.ts  shared optional object-shaped JSON/JSONC config reader
     claude-config.ts    installer-parity writes of ~/.claude.json + ~/.claude/settings.json
     codex-config.ts     installer-parity ~/.codex config.toml (marker-managed regions),
                         cli-hop.config.toml profile, and auth.json (0600)
@@ -103,8 +106,9 @@ src/
 1. Add one `Agent` adapter to `CUSTOMIZABLE_AGENTS` in
    `src/services/registry.ts`: command, env mapping, supported protocols, model
    argument behavior, and optional `prepare` config writer.
-2. Do not add agent-specific branches to `run.ts` or `customize.ts`; both flows
-   must stay behind `AgentService.prepare()` / `createLaunchPlan()`.
+2. Do not add agent-specific branches to `run.ts` or `customize.ts`; shared
+   pool, preparation, and launch policy belongs in `LaunchCoordinator`, while
+   agent-specific behavior stays behind `AgentService` and registry adapters.
 3. Add launch-plan/config tests plus an isolated E2E test using temporary
    HOME/XDG and a stub executable.
 

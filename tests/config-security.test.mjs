@@ -137,13 +137,13 @@ test("OpenCode config refuses a malformed entry for a catalogue model", () =>
   openCodeCase(
     '{"provider":{"cli-hop":{"models":{"model":"invalid"}}}}',
     /invalid cli-hop model configuration for model/,
-    ["messages"]
+    ["chat_completions"]
   ));
 
-test("OpenCode config refuses a malformed entry in the openai-compatible provider", () =>
+test("OpenCode config refuses a malformed entry in the legacy provider", () =>
   openCodeCase(
-    '{"provider":{"cli-hop-openai":{"models":{"model":"invalid"}}}}',
-    /invalid cli-hop-openai model configuration for model/
+    '{"provider":{"cli-hop":{"models":{"model":"invalid"}}}}',
+    /invalid cli-hop model configuration for model/
   ));
 
 test("OpenCode config refuses to overwrite malformed JSON", () =>

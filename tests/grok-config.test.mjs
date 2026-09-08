@@ -20,7 +20,7 @@ function managedBlock(model = "grok-4.5", baseUrl = "https://gateway.example.com
     `name = "${model}"`,
     `description = "${model}"`,
     'api_key = "test-key"',
-    'api_backend = "responses"',
+    'api_backend = "chat_completions"',
     "context_window = 1000000",
     GROK_CONFIG_MARKER_END,
     "",
@@ -68,7 +68,7 @@ test("Grok merge replaces a stale managed model section and keeps user content",
   assert.match(merged, new RegExp(`${GROK_CONFIG_MARKER_START.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`));
   assert.match(
     merged,
-    /\[model\."grok-4\.5"\]\nmodel = "grok-4\.5"\nbase_url = "https:\/\/gateway\.example\.com\/v1"\nname = "Grok 4\.5"\ndescription = "Grok 4\.5"\napi_key = "test-key"\napi_backend = "responses"\ncontext_window = 1000000/
+    /\[model\."grok-4\.5"\]\nmodel = "grok-4\.5"\nbase_url = "https:\/\/gateway\.example\.com\/v1"\nname = "Grok 4\.5"\ndescription = "Grok 4\.5"\napi_key = "test-key"\napi_backend = "chat_completions"\ncontext_window = 1000000/
   );
   assert.equal(merged.includes(GROK_CONFIG_MARKER_END), true);
 });
@@ -118,7 +118,7 @@ test("Grok merge replaces a block written by the official installer", () => {
     'name = "Grok 4.5"',
     'description = "Grok 4.5"',
     'api_key = "ccsk-old"',
-    'api_backend = "responses"',
+    'api_backend = "chat_completions"',
     "context_window = 1000000",
     GROK_CONFIG_MARKER_END,
     "",

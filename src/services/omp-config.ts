@@ -25,28 +25,17 @@ export interface OmpModelsInput {
 }
 
 /**
- * Pick omp's wire api for a model: anthropic-messages when the gateway
- * serves it on /v1/messages, otherwise whatever protocol it does support.
+ * Pick omp's wire api for a model. CLI Hop exposes these models through
+ * OpenAI Chat Completions, which omp calls `openai-completions`.
  */
 export function ompApiFor(model: RemoteModel): string {
   const apis = model.apis ?? [];
-  if (apis.includes("messages")) return "anthropic-messages";
-  if (apis.includes("chat_completions")) return "openai-completions";
-  if (apis.includes("responses")) return "openai-responses";
-  if (apis.includes("generateContent") || apis.includes("streamGenerateContent")) return "openai-responses";
-  // Gateways that omit capability metadata commonly expose GPT/Codex models
-  // on the OpenAI responses channel. Avoid sending these through Anthropic.
-  if (/^(gpt|o[1-9]|codex)/i.test(model.id)) return "openai-responses";
-  if (/^gemini/i.test(model.id)) return "openai-responses";
-  // No capability info (older gateway / local pools) - catalogue is
-  // Claude-family, and this is what the env-var path always assumed.
-  return "anthropic-messages";
+  return "openai-completions";
 }
 
 /**
  * Keeps the user's existing models.yml (other providers, comments aside)
- * and replaces only our `providers.cli-hop` block so `omp` / `/model`
- * always show the live CLI Hop catalogue with the correct wire per model.
+ * always show the live CLI Hop catalogue through the Chat Completions wire.
  */
 export class OmpConfigService {
   readonly modelsPath: string;
@@ -87,11 +76,13 @@ export class OmpConfigService {
     const providers = {
       ...(currentProviders as Record<string, unknown> | undefined),
     };
-    const selected = input.models.find((m) => m.id === input.selected);
-    // Selected model first, then the rest of the live catalogue.
-    const catalogue = selected
-      ? [selected, ...input.models.filter((m) => m.id !== selected.id)]
-      : [...input.models, { id: input.selected }];
+    const chatModels = input.models.filter(
+      (model) => !model.apis?.length || model.apis.includes("chat_completions")
+    );
+    const selected = chatModels.find((model) => model.id === input.selected);
+    const catalogue: RemoteModel[] = selected
+      ? [selected, ...chatModels.filter((model) => model.id !== selected.id)]
+      : chatModels;
 
     providers[OMP_PROVIDER_ID] = {
       baseUrl: `${input.endpoint.replace(/\/+$/, "")}/v1`,

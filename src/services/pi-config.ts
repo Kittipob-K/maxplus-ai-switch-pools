@@ -24,14 +24,7 @@ export interface PiModelsInput {
 
 /** Resolve the Pi wire API for a CLI Hop model from its advertised capabilities. */
 export function piApiFor(model: RemoteModel): string {
-  const apis = model.apis ?? [];
-  if (apis.includes("messages")) return "anthropic-messages";
-  if (apis.includes("chat_completions")) return "openai-completions";
-  if (apis.includes("responses")) return "openai-responses";
-  if (apis.includes("generateContent") || apis.includes("streamGenerateContent")) return "openai-responses";
-  if (/^(gpt|o[1-9]|codex)/i.test(model.id)) return "openai-responses";
-  if (/^gemini/i.test(model.id)) return "openai-responses";
-  return "anthropic-messages";
+  return "openai-completions";
 }
 
 /**
@@ -70,10 +63,13 @@ export class PiConfigService {
     const providers = {
       ...(currentProviders as Record<string, unknown> | undefined),
     };
-    const selected = input.models.find((model) => model.id === input.selected);
-    const catalogue = selected
-      ? [selected, ...input.models.filter((model) => model.id !== selected.id)]
-      : [...input.models, { id: input.selected }];
+    const chatModels = input.models.filter(
+      (model) => !model.apis?.length || model.apis.includes("chat_completions")
+    );
+    const chatSelected = chatModels.find((model) => model.id === input.selected);
+    const catalogue = chatSelected
+      ? [chatSelected, ...chatModels.filter((model) => model.id !== chatSelected.id)]
+      : chatModels;
 
     providers[PI_PROVIDER_ID] = {
       baseUrl: `${input.endpoint.replace(/\/+$/, "")}/v1`,

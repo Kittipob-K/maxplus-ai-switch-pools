@@ -120,9 +120,8 @@ export const AGENT_INSTALL_SPECS: Record<string, AgentInstallSpec> = {
     docsUrl: "https://pi.dev/docs/latest",
   },
   opencode: {
-    macos: curlPipe("https://opencode.ai/install", "bash"),
-    linux: curlPipe("https://opencode.ai/install", "bash"),
-    // Windows official routes: choco, scoop, or npm — npm needs no extra tooling.
+    macos: npmGlobal("opencode-ai"),
+    linux: npmGlobal("opencode-ai"),
     windows: npmGlobal("opencode-ai"),
     docsUrl: "https://opencode.ai/docs/",
   },

@@ -48,6 +48,21 @@ test("Codex launch plan uses per-invocation Responses provider overrides", () =>
   assert.equal(plan.env.CLI_HOP_API_KEY, "test-key");
 });
 
+test("OpenCode launch plan uses the OpenAI-compatible provider and run subcommand", () => {
+  const agent = getAgentById("opencode");
+  assert.ok(agent);
+
+  const plan = new AgentService().createLaunchPlan(agent, {
+    model: "gpt-5.6-terra",
+    apiKey: "test-key",
+    baseUrl: "https://gateway.example.com",
+    args: ["ตอบเพียง pong"],
+  });
+
+  assert.equal(plan.command, "opencode");
+  assert.deepEqual(plan.args, ["run", "--model", "cli-hop/gpt-5.6-terra", "ตอบเพียง pong"]);
+  assert.equal(plan.env.CLI_HOP_API_KEY, "test-key");
+});
 test("Grok Build launch plan forwards only user args and keeps the key out of the environment", () => {
   const agent = getAgentById("grok");
   assert.ok(agent);

@@ -34,13 +34,19 @@ test("install specs use the official commands from each agent's docs", () => {
     omp: "https://omp.sh/install",
     codex: "https://chatgpt.com/codex/install.sh",
     grok: "https://x.ai/cli/install.sh",
-    opencode: "https://opencode.ai/install",
   };
   for (const [agentId, url] of Object.entries(official)) {
     const display = displayInstallCommand(AGENT_INSTALL_SPECS[agentId].macos);
     assert.ok(
       display.includes(`curl -fsSL ${url}`),
       `${agentId} macOS should curl ${url}, got: ${display}`
+    );
+  }
+  // OpenCode is installed from its npm package on every supported platform.
+  for (const platform of ["macos", "linux", "windows"]) {
+    assert.match(
+      displayInstallCommand(AGENT_INSTALL_SPECS.opencode[platform]),
+      /npm install -g opencode-ai/
     );
   }
   // Windows routes go through PowerShell one-liners; pi routes through npm

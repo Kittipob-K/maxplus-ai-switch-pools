@@ -3,12 +3,12 @@ import test from "node:test";
 
 import { PoolService } from "../dist/services/pool.js";
 
-test("local fallback pools only expose message-compatible agents", () => {
+test("local fallback pools only expose the configured protocol agents", () => {
   const pools = new PoolService().listPools();
   for (const pool of pools) {
     assert.deepEqual(
       pool.agents.map((agent) => agent.id),
-      ["claude-code", "omp", "pi", "opencode"]
+      ["claude-code"]
     );
   }
 });

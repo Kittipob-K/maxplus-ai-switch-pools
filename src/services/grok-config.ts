@@ -9,8 +9,8 @@ import { writeSecureFile } from "./secure-file.js";
  * `# >>> CLI Hop Grok Build >>>` / `<<<` markers, preserving every
  * unrelated TOML section, key and comment the user already has.
  *
- * The block uses the Responses wire (`api_backend = "responses"`) with the
- * root Responses URL and the key inline, so Grok never depends on a shell
+ * The block uses the OpenAI Chat Completions wire (`api_backend = "chat_completions"`)
+ * with the gateway URL and key inline, so Grok never depends on a shell
  * environment variable (installer parity).
  */
 
@@ -53,7 +53,7 @@ function renderManagedBlock(input: GrokConfigInput): string {
     `name = "${name}"`,
     `description = "${name}"`,
     `api_key = "${input.apiKey}"`,
-    'api_backend = "responses"',
+    'api_backend = "chat_completions"',
     `context_window = ${contextWindow}`,
     GROK_CONFIG_MARKER_END,
     "",

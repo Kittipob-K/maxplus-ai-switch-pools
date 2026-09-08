@@ -33,10 +33,9 @@ test("OpenCode config preserves other providers and references the key from env"
     "https://gateway.example.com/v1"
   );
   assert.equal(config.$schema, undefined);
-  assert.deepEqual(Object.keys(config.provider["cli-hop"].models), ["claude-model"]);
-  assert.deepEqual(Object.keys(config.provider["cli-hop-openai"].models), ["chat-model"]);
-  assert.equal(config.model, "cli-hop-openai/chat-model");
-  assert.equal(config.small_model, "cli-hop-openai/chat-model");
+  assert.deepEqual(Object.keys(config.provider["cli-hop"].models), ["chat-model"]);
+  assert.equal(config.model, "cli-hop/chat-model");
+  assert.equal(config.small_model, "cli-hop/chat-model");
   assert.equal(JSON.stringify(config).includes("test-key"), false);
 });
 
@@ -53,8 +52,8 @@ test("OpenCode config adds the schema only when it creates the file", async () =
 
   const config = JSON.parse(await readFile(configPath, "utf8"));
   assert.equal(config.$schema, "https://opencode.ai/config.json");
-  assert.equal(config.model, "cli-hop-openai/chat-model");
-  assert.deepEqual(Object.keys(config.provider["cli-hop-openai"].models), ["chat-model"]);
+  assert.equal(config.model, "cli-hop/chat-model");
+  assert.deepEqual(Object.keys(config.provider["cli-hop"].models), ["chat-model"]);
 
   await writeFile(configPath, JSON.stringify({ theme: "dark" }));
 
@@ -110,37 +109,33 @@ test("OpenCode config adds new models without dropping existing model settings",
   assert.equal(result.path, configPath);
   // Chat-capable saved models migrate to the OpenAI-compatible provider;
   // old-model has no live wire and stays in the Anthropic provider as stale.
-  assert.deepEqual(result.staleModels, ["old-model"]);
+  assert.deepEqual(result.staleModels, []);
 
   const config = JSON.parse(await readFile(configPath, "utf8"));
   assert.equal(config.provider.existing.name, "Existing");
   assert.deepEqual(config.mcp.existing, { type: "remote" });
-  assert.equal(config.provider["cli-hop"].npm, "@ai-sdk/anthropic");
+  assert.equal(config.provider["cli-hop"].npm, "@ai-sdk/openai-compatible");
   assert.equal(config.provider["cli-hop"].options.timeout, 60000);
   assert.deepEqual(config.provider["cli-hop"].options.headers, { "X-Workspace": "keep" });
-  assert.deepEqual(Object.keys(config.provider["cli-hop"].models), ["old-model"]);
-  assert.equal(config.provider["cli-hop-openai"].options.apiKey, "{env:CLI_HOP_API_KEY}");
-  assert.deepEqual(Object.keys(config.provider["cli-hop-openai"].models), [
+  assert.deepEqual(Object.keys(config.provider["cli-hop"].models), [
     "new-model",
     "shared-model",
   ]);
-  assert.deepEqual(config.provider["cli-hop-openai"].models["new-model"], { name: "New model" });
-  assert.equal(config.provider["cli-hop-openai"].models["shared-model"].name, "Updated shared name");
-  assert.deepEqual(config.provider["cli-hop-openai"].models["shared-model"].limit, { output: 4096 });
-  assert.equal(config.model, "cli-hop-openai/new-model");
+  assert.deepEqual(config.provider["cli-hop"].models["new-model"], { name: "New model" });
+  assert.equal(config.provider["cli-hop"].models["shared-model"].name, "Updated shared name");
+  assert.deepEqual(config.provider["cli-hop"].models["shared-model"].limit, { output: 4096 });
+  assert.equal(config.model, "cli-hop/new-model");
 
   const second = await new OpenCodeConfigService(configPath).apply({
     endpoint: "https://gateway.example.com",
     models: [{ id: "another-model", apis: ["chat_completions"] }],
     selected: "another-model",
   });
-  assert.deepEqual(second.staleModels, ["old-model", "new-model", "shared-model"]);
+  assert.deepEqual(second.staleModels, []);
 
   const updated = JSON.parse(await readFile(configPath, "utf8"));
-  assert.deepEqual(Object.keys(updated.provider["cli-hop-openai"].models), [
+  assert.deepEqual(Object.keys(updated.provider["cli-hop"].models), [
     "another-model",
-    "new-model",
-    "shared-model",
   ]);
 });
 
@@ -163,9 +158,9 @@ test("OpenCode config resolves the model name from displayName, then the saved n
   await new OpenCodeConfigService(configPath).apply({
     endpoint: "https://gateway.example.com",
     models: [
-      { id: "renamed-model", apis: ["messages"] },
-      { id: "gateway-named", displayName: "Gateway name", apis: ["messages"] },
-      { id: "unlabeled", apis: ["messages"] },
+      { id: "renamed-model", apis: ["chat_completions"] },
+      { id: "gateway-named", displayName: "Gateway name", apis: ["chat_completions"] },
+      { id: "unlabeled", apis: ["chat_completions"] },
     ],
     selected: "renamed-model",
   });
@@ -177,7 +172,7 @@ test("OpenCode config resolves the model name from displayName, then the saved n
   assert.equal(models["unlabeled"].name, "unlabeled");
 });
 
-test("OpenCode config leaves entries outside the catalogue untouched", async () => {
+test("OpenCode config removes entries outside the catalogue", async () => {
   const directory = await mkdtemp(join(tmpdir(), "cli-hop-opencode-"));
   const configPath = join(directory, "opencode.json");
   await writeFile(
@@ -191,15 +186,44 @@ test("OpenCode config leaves entries outside the catalogue untouched", async () 
 
   const result = await new OpenCodeConfigService(configPath).apply({
     endpoint: "https://gateway.example.com",
-    models: [{ id: "model", apis: ["messages"] }],
+    models: [{ id: "model", apis: ["chat_completions"] }],
     selected: "model",
   });
 
-  assert.deepEqual(result.staleModels, ["stray-null", "stray-string"]);
+  assert.deepEqual(result.staleModels, []);
   const models = JSON.parse(await readFile(configPath, "utf8")).provider["cli-hop"].models;
-  assert.equal(models["stray-null"], null);
-  assert.equal(models["stray-string"], "kept");
+  assert.equal(models["stray-null"], undefined);
+  assert.equal(models["stray-string"], undefined);
   assert.deepEqual(models.model, { name: "model" });
+});
+
+test("OpenCode config removes old entries when the API omits capability metadata", async () => {
+  const directory = await mkdtemp(join(tmpdir(), "cli-hop-opencode-"));
+  const configPath = join(directory, "opencode.json");
+  await writeFile(
+    configPath,
+    JSON.stringify({
+      provider: {
+        "cli-hop": {
+          models: {
+            "current-model": { name: "Saved current label" },
+            "retired-model": { name: "Retired model" },
+          },
+        },
+      },
+    })
+  );
+
+  const result = await new OpenCodeConfigService(configPath).apply({
+    endpoint: "https://gateway.example.com",
+    models: [{ id: "current-model" }],
+    selected: "current-model",
+  });
+
+  assert.deepEqual(result.staleModels, []);
+  const models = JSON.parse(await readFile(configPath, "utf8")).provider["cli-hop"].models;
+  assert.deepEqual(models["current-model"], { name: "Saved current label" });
+  assert.equal(models["retired-model"], undefined);
 });
 
 test("OpenCode config routes each wire to its own provider without calling models retired", async () => {
@@ -217,7 +241,7 @@ test("OpenCode config routes each wire to its own provider without calling model
   const result = await new OpenCodeConfigService(configPath).apply({
     endpoint: "https://gateway.example.com",
     models: [
-      { id: "messages-only", apis: ["messages"] },
+      { id: "messages-only", apis: ["chat_completions"] },
       { id: "chat-model", apis: ["chat_completions"] },
     ],
     selected: "chat-model",
@@ -226,9 +250,8 @@ test("OpenCode config routes each wire to its own provider without calling model
   // The gateway still serves both models; each wire just gets its own provider.
   assert.deepEqual(result.staleModels, []);
   const config = JSON.parse(await readFile(configPath, "utf8"));
-  assert.deepEqual(config.provider["cli-hop"].models["messages-only"], { name: "Messages only" });
-  assert.deepEqual(config.provider["cli-hop-openai"].models["chat-model"], { name: "chat-model" });
-  assert.equal(config.model, "cli-hop-openai/chat-model");
+  assert.equal(config.provider["cli-hop"].models["chat-model"].name, "chat-model");
+  assert.equal(config.model, "cli-hop/chat-model");
 });
 
 test("OpenCode config prefers the Anthropic provider ref for a messages-only selection", async () => {
@@ -249,7 +272,7 @@ test("OpenCode config prefers the Anthropic provider ref for a messages-only sel
   assert.equal(config.small_model, "cli-hop/claude-model");
 });
 
-test("OpenCode config skips retired-model reporting when the gateway catalogue is unknown", async () => {
+test("OpenCode config treats models without capability metadata as authoritative", async () => {
   const directory = await mkdtemp(join(tmpdir(), "cli-hop-opencode-"));
   const configPath = join(directory, "opencode.json");
   await writeFile(
@@ -266,8 +289,6 @@ test("OpenCode config skips retired-model reporting when the gateway catalogue i
     })
   );
 
-  // No capabilities means the models API was unreachable and cli-hop fell
-  // back to its built-in pools, so the catalogue cannot prove anything is gone.
   const result = await new OpenCodeConfigService(configPath).apply({
     endpoint: "https://gateway.example.com",
     models: [{ id: "local-model" }],
@@ -275,9 +296,12 @@ test("OpenCode config skips retired-model reporting when the gateway catalogue i
   });
 
   assert.deepEqual(result.staleModels, []);
-  const models = JSON.parse(await readFile(configPath, "utf8")).provider["cli-hop"].models;
-  assert.equal(models["saved-a"].name, "A");
-  assert.equal(models["saved-b"].name, "B");
+  const config = JSON.parse(await readFile(configPath, "utf8"));
+  assert.equal(config.provider["cli-hop"].models["saved-a"], undefined);
+  assert.equal(config.provider["cli-hop"].models["saved-b"], undefined);
+  assert.equal(config.provider["cli-hop"].models["local-model"].name, "local-model");
+  assert.equal(config.model, "cli-hop/local-model");
+  assert.equal(config.small_model, "cli-hop/local-model");
 });
 
 test("OpenCode config keeps a saved label when the gateway sends an empty displayName", async () => {
@@ -294,7 +318,7 @@ test("OpenCode config keeps a saved label when the gateway sends an empty displa
 
   await new OpenCodeConfigService(configPath).apply({
     endpoint: "https://gateway.example.com",
-    models: [{ id: "blank-name", displayName: "", apis: ["messages"] }],
+    models: [{ id: "blank-name", displayName: "", apis: ["chat_completions"] }],
     selected: "blank-name",
   });
 

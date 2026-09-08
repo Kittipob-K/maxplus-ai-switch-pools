@@ -50,7 +50,7 @@ export const CUSTOMIZABLE_AGENTS: Agent[] = [
     // omp's --model selector is provider/modelId; prefix disambiguates the
     // CLI Hop copy from built-in providers with the same ids.
     modelPrefix: "cli-hop/",
-    supportedProtocols: ["messages", "chat_completions", "responses"],
+    supportedProtocols: ["chat_completions"],
     prepare: async ({ endpoint, models, selected }) => [
       await new OmpConfigService().apply({ endpoint, models, selected }),
     ],
@@ -64,7 +64,7 @@ export const CUSTOMIZABLE_AGENTS: Agent[] = [
     baseUrlEnvVars: [],
     envToUnset: PI_ENV_KEYS,
     modelPrefix: "cli-hop/",
-    supportedProtocols: ["messages", "chat_completions", "responses"],
+    supportedProtocols: ["chat_completions"],
     prepare: async ({ endpoint, models, selected }) => [
       await new PiConfigService().apply({ endpoint, models, selected }),
     ],
@@ -89,10 +89,15 @@ export const CUSTOMIZABLE_AGENTS: Agent[] = [
     apiKeyEnvVars: ["CLI_HOP_API_KEY"],
     baseUrlEnvVars: [],
     envToUnset: ["CLI_HOP_API_KEY", ...OPENAI_COMPATIBLE_ENV_KEYS],
-    // Installer parity: messages-capable models go through the Anthropic-shaped
-    // provider, chat_completions through the OpenAI-compatible one.
-    supportedProtocols: ["messages", "chat_completions"],
-    modelPrefix: "cli-hop/",
+    supportedProtocols: ["chat_completions"],
+    // OpenCode treats bare positional arguments as a directory. Use its `run`
+    // subcommand when cli-hop forwards a non-interactive prompt.
+    buildArgs: (options) => {
+      const args = options.args?.length ? ["run"] : [];
+      if (options.model) args.push("--model", `cli-hop/${options.model}`);
+      if (options.args) args.push(...options.args);
+      return args;
+    },
     prepare: async ({ endpoint, models, selected }) => {
       const result = await new OpenCodeConfigService().apply({
         endpoint,
@@ -156,7 +161,7 @@ export const CUSTOMIZABLE_AGENTS: Agent[] = [
     apiKeyEnvVars: [],
     baseUrlEnvVars: [],
     envToUnset: [...GROK_ENV_KEYS],
-    supportedProtocols: ["responses"],
+    supportedProtocols: ["chat_completions"],
     // The managed config block pins the default model; the launch only
     // forwards the user's own arguments.
     buildArgs: (options) => (options.args ? [...options.args] : []),

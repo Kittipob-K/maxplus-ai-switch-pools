@@ -182,7 +182,7 @@ test("run syncs Pi config and launches the selected provider model", async (cont
   const config = JSON.parse(await readFile(piConfigPath, "utf8"));
   assert.equal(config.providers.existing.name, "Existing");
   assert.equal(config.providers["cli-hop"].apiKey, "$CLI_HOP_API_KEY");
-  assert.deepEqual(config.providers["cli-hop"].models.map((model) => model.id), ["chat-model", "responses-model"]);
+  assert.deepEqual(config.providers["cli-hop"].models.map((model) => model.id), ["chat-model"]);
 });
 
 test("run syncs OpenCode without storing the primary key", async (context) => {
@@ -198,13 +198,12 @@ test("run syncs OpenCode without storing the primary key", async (context) => {
   assert.equal(result.code, 0, result.stderr || result.stdout);
   const capture = JSON.parse(await readFile(fixture.capturePath, "utf8"));
   assert.deepEqual(capture.args, ["--model", "cli-hop/chat-model"]);
-  assert.equal(capture.cliHopKey, "e2e-key");
   const raw = await readFile(join(fixture.configDir, "opencode", "opencode.json"), "utf8");
   assert.equal(raw.includes("e2e-key"), false);
   assert.equal(JSON.parse(raw).provider["cli-hop"].options.apiKey, "{env:CLI_HOP_API_KEY}");
 });
 
-test("run warns about OpenCode models the gateway no longer serves", async (context) => {
+test("run removes OpenCode models the gateway no longer serves", async (context) => {
   const fixture = await createFixture(context);
   await writeCaptureStub(fixture.binDir, "opencode");
   const opencodeConfigPath = join(fixture.configDir, "opencode", "opencode.json");
@@ -225,10 +224,9 @@ test("run warns about OpenCode models the gateway no longer serves", async (cont
   );
 
   assert.equal(result.code, 0, result.stderr || result.stdout);
-  assert.match(result.stdout, /retired-model/);
-  assert.match(result.stdout, /kept in opencode\.json/);
+  assert.doesNotMatch(result.stdout, /retired-model/);
   const config = JSON.parse(await readFile(opencodeConfigPath, "utf8"));
-  assert.equal(config.provider["cli-hop"].models["retired-model"].name, "Retired model");
+  assert.equal(config.provider["cli-hop"].models["retired-model"], undefined);
 });
 
 test("run launches Codex with Responses provider overrides", async (context) => {
@@ -258,7 +256,7 @@ test("run writes the Grok managed config block and launches without a key env va
 
   const result = await run(
     process.execPath,
-    ["dist/index.js", "run", "-a", "grok", "-p", "remote:responses-model"],
+    ["dist/index.js", "run", "-a", "grok", "-p", "remote:chat-model"],
     { cwd: process.cwd(), env: fixtureEnv(fixture), stdio: ["ignore", "pipe", "pipe"] }
   );
 
@@ -270,11 +268,11 @@ test("run writes the Grok managed config block and launches without a key env va
   assert.deepEqual(capture.args, []);
   const raw = await readFile(join(fixture.homeDir, ".grok", "config.toml"), "utf8");
   assert.equal(raw.includes("# >>> CLI Hop Grok Build >>>"), true);
-  assert.match(raw, /\[model\."responses-model"\]/);
+  assert.match(raw, /\[model\."chat-model"\]/);
   assert.match(raw, /base_url = ".*\/v1"/);
   assert.match(raw, /api_key = "e2e-key"/);
-  assert.match(raw, /api_backend = "responses"/);
-  assert.match(raw, /default = "responses-model"/);
+  assert.match(raw, /api_backend = "chat_completions"/);
+  assert.match(raw, /default = "chat-model"/);
   assert.match(raw, /models_base_url = /);
   assert.match(raw, /default_skills_installs_purged = true/);
 });

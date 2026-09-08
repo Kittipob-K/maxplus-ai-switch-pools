@@ -56,24 +56,25 @@ $ cli-hop
   capabilities. Unsupported model/agent combinations are hidden or rejected
   before launch.
 - **Oh My Pi model sync** — every selection rewrites the `cli-hop` provider in
-  `~/.omp/agent/models.yml` with the live pool catalogue, choosing
-  `anthropic-messages` when a model serves `/v1/messages` and its supported
-  wire otherwise; the key itself stays off disk (`CLI_HOP_API_KEY` env).
-- **Pi model sync** — every Pi launch merge-writes the live CLI Hop catalogue
-  into `~/.pi/agent/models.json` under provider `cli-hop`, then starts Pi with
-  `--model cli-hop/<model>`. Its config stores only `$CLI_HOP_API_KEY`, never
-  the primary key itself.
-- **OpenCode model sync (installer parity, dual-wire)** — merge-writes
-  `~/.config/opencode/opencode.json` with two CLI Hop providers:
-  messages-capable models are exposed through an `@ai-sdk/anthropic` provider
-  and `chat_completions` models through an `@ai-sdk/openai-compatible`
-  provider (`cli-hop` / `cli-hop-openai`), with `model` and `small_model` refs
-  pinned to the selected model's wire. Your other providers, extra options and
-  any model entries you tuned by hand are preserved; the key is referenced as
-  `{env:CLI_HOP_API_KEY}`, never stored. Models saved by older releases under
-  the single `cli-hop` provider migrate to the OpenAI-compatible provider
-  automatically; a retired model is kept and reported as a warning so you can
-  prune it; `$schema` is added only when the file is newly created.
+  `~/.omp/agent/models.yml` with models available through OpenAI Chat
+  Completions, using `openai-completions` for every entry. The key itself stays
+  off disk (`CLI_HOP_API_KEY` env).
+- **Pi model sync** — every Pi launch merge-writes the Chat Completions
+  catalogue into `~/.pi/agent/models.json` under provider `cli-hop`, then starts
+  Pi with `--model cli-hop/<model>`. Its config stores only
+  `$CLI_HOP_API_KEY`, never the primary key itself.
+- **OpenCode model sync** — merge-writes
+  `~/.config/opencode/opencode.json` with one `@ai-sdk/openai-compatible`
+  provider named `cli-hop`. Only models compatible with Chat Completions are
+  included, and `model` plus `small_model` are pinned to
+  `cli-hop/<selected-model>`. The current catalogue is authoritative, so old
+  CLI Hop model entries that are no longer returned are removed even when
+  capability metadata is absent. Saved settings and labels for models still in
+  the catalogue are preserved, as are unrelated providers and top-level
+  options. The key is referenced as `{env:CLI_HOP_API_KEY}`, never stored, and
+  `$schema` is added only when the file is newly created. Forwarded prompts use
+  `opencode run` so OpenCode treats them as non-interactive prompts rather than
+  directory arguments.
 - **Live model catalogue** — pools are fetched from the CLI Hop API
   (`GET /v1/models`, Bearer auth, cursor pagination). If the API is
   unreachable, falls back to built-in local pools with a warning.
@@ -88,7 +89,8 @@ $ cli-hop
   official docs URL — the flow never crashes. Install commands are the
   verbatim one-liners from each vendor's docs, e.g. `curl -fsSL
   https://claude.ai/install.sh | bash` (Claude Code),
-  `npm install -g --ignore-scripts @earendil-works/pi-coding-agent` (Pi), and
+  `npm install -g --ignore-scripts @earendil-works/pi-coding-agent` (Pi),
+  `npm install -g opencode-ai` (OpenCode on every supported platform), and
   `irm https://x.ai/cli/install.ps1 | iex` (Grok Build on Windows).
 - **Claude Code configuration (installer parity)** — mirrors the official
   CLI Hop installer: writes `~/.claude.json` and `~/.claude/settings.json`
@@ -244,9 +246,9 @@ agent shortcut, and returns to the Settings menu.
 | Oh My Pi | `--model cli-hop/<model>` | any advertised protocol | `~/.omp/agent/models.yml` |
 | Pi | `--model cli-hop/<model>` | any advertised protocol | `~/.pi/agent/models.json` |
 | Aider | `--model openai/<model>` | `chat_completions` | none |
-| OpenCode | `--model cli-hop/<model>` | `messages`, `chat_completions` | `~/.config/opencode/opencode.json` (dual-wire providers + `model`/`small_model` refs) |
+| OpenCode | `--model cli-hop/<model>` | `chat_completions` | `~/.config/opencode/opencode.json` (`cli-hop` provider + `model`/`small_model` refs) |
 | Codex CLI | `--model <model>` | `responses` | `~/.codex/config.toml`, `cli-hop.config.toml`, `auth.json` |
-| Grok Build | default from `~/.grok/config.toml` | `responses` | `~/.grok/config.toml` (managed block, key inline) |
+| Grok Build | default from `~/.grok/config.toml` | `chat_completions` | `~/.grok/config.toml` (managed block, key inline) |
 
 Agent config directories are created with `0700` permissions and managed files
 with `0600` permissions. Merge failures are reported instead of overwriting a

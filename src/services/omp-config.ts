@@ -95,6 +95,7 @@ export class OmpConfigService {
       ? [selected, ...input.models.filter((m) => m.id !== selected.id)]
       : [...input.models, { id: input.selected }];
 
+    const geminiModels = catalogue.filter((m) => ompApiFor(m) === "google-generative-ai");
     providers[OMP_PROVIDER_ID] = {
       baseUrl: `${input.endpoint.replace(/\/+$/, "")}/v1`,
       apiKey: OMP_API_KEY_ENV,
@@ -102,12 +103,20 @@ export class OmpConfigService {
       authHeader: true,
       // Anthropic-fronted proxies commonly reject the `strict` tool field.
       disableStrictTools: true,
-      models: catalogue.map((m) => ({
+      models: catalogue.filter((m) => !geminiModels.includes(m)).map((m) => ({
         id: m.id,
         name: m.displayName ?? m.id,
         api: ompApiFor(m),
       })),
     };
+    if (geminiModels.length > 0) {
+      providers[`${OMP_PROVIDER_ID}-gemini`] = {
+        baseUrl: `${input.endpoint.replace(/\/+$/, "")}/v1beta`,
+        apiKey: OMP_API_KEY_ENV,
+        authHeader: true,
+        models: geminiModels.map((m) => ({ id: m.id, name: m.displayName ?? m.id, api: "google-generative-ai" })),
+      };
+    }
     doc = { ...doc, providers };
 
     await writeSecureFile(this.modelsPath, stringify(doc));

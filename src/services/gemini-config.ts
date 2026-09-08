@@ -8,7 +8,8 @@ export class GeminiConfigService {
     const dir = join(homedir(), ".gemini");
     const envPath = join(dir, ".env");
     const settingsPath = join(dir, "settings.json");
-    await writeSecureFile(envPath, `GEMINI_API_KEY=${input.apiKey}\nGEMINI_MODEL=${input.selected}\nGOOGLE_GEMINI_BASE_URL=${input.endpoint.replace(/\/+$/, "")}/gemini-vip\n`);
+    const base = `${input.endpoint.replace(/\/+$/, "")}/gemini-vip`;
+    await writeSecureFile(envPath, `GEMINI_API_KEY=${input.apiKey}\nGOOGLE_API_KEY=${input.apiKey}\nGEMINI_MODEL=${input.selected}\nGOOGLE_GEMINI_BASE_URL=${base}\n`);
     await writeSecureFile(settingsPath, JSON.stringify({ security: { auth: { selectedType: "gemini-api-key" } } }, null, 2) + "\n");
     return [envPath, settingsPath];
   }

@@ -1,19 +1,15 @@
 import { Command } from "commander";
 import { select } from "@inquirer/prompts";
-import { PoolService } from "../services/pool.js";
-import { AgentService } from "../services/agent.js";
+import { LaunchCoordinator } from "../services/launch.js";
 import { SettingsService } from "../services/settings.js";
 import { ensurePrerequisites } from "../services/prereq.js";
 import { ensureAgentInstalled } from "../services/installer.js";
-import { endpointFromModelsBaseUrl } from "../services/endpoint.js";
 import {
   agentSupportsModel,
   CUSTOMIZABLE_AGENTS,
   getAgentById,
   isAgentId,
 } from "../services/registry.js";
-import { DEFAULT_MODELS_BASE_URL } from "../types.js";
-import type { RunOptions } from "../types.js";
 import * as ui from "../ui.js";
 
 export const runCommand = new Command("run")
@@ -26,8 +22,7 @@ export const runCommand = new Command("run")
   )
   .argument("[args...]", "Additional arguments to pass to the agent")
   .action(async (args: string[], options) => {
-    const poolService = new PoolService();
-    const agentService = new AgentService();
+    const launch = new LaunchCoordinator();
     const settingsService = new SettingsService();
 
     try {
@@ -38,10 +33,7 @@ export const runCommand = new Command("run")
       // Resolve selectable pools: live CLI Hop model list when available,
       // otherwise the built-in local pools.
       const spinner = new ui.Spinner("Fetching models from CLI Hop API");
-      const { pools, source, error, models } = await poolService.resolvePools({
-        apiKey: settings.apiKey,
-        baseUrl: settings.baseUrl,
-      });
+      const { pools, source, error, models } = await launch.resolvePools(settings);
       spinner.stop();
       if (error) ui.warn(`${error} — using local pools`);
       if (source === "remote") ui.ok(`${pools.length} models loaded from API`);
@@ -76,7 +68,7 @@ export const runCommand = new Command("run")
       }
 
       const pool =
-        pools.find((p) => p.id === poolId) ?? poolService.getPool(poolId);
+        pools.find((p) => p.id === poolId) ?? launch.poolService.getPool(poolId);
       if (!pool) {
         ui.danger(`Pool "${poolId}" not found`);
         process.exit(1);
@@ -124,31 +116,17 @@ export const runCommand = new Command("run")
           process.exit(1);
         }
       }
-      const endpoint = endpointFromModelsBaseUrl(
-        settings.baseUrl ?? DEFAULT_MODELS_BASE_URL
-      );
-      const changed = await agentService.prepare(agent, {
-        apiKey: settings.apiKey!,
-        endpoint,
-        models: models ?? [{ id: selectedModel }],
-        selected: selectedModel,
-      });
-      for (const file of changed) ui.ok(ui.filepath(file));
-
-      ui.h2(`🚀 Starting ${agent.name} with model ${selectedModel}`);
-
-      const runOptions: RunOptions = {
-        pool: poolId,
+      const prepared = await launch.prepare({
+        agent,
         model: selectedModel,
         args,
-        apiKey: settings.apiKey,
-        baseUrl: settings.apiKey
-          ? endpoint
-          : undefined,
-      };
-
-      const exitCode = await agentService.run(agent, runOptions);
-      process.exit(exitCode);
+        poolId,
+        settings,
+        models,
+      });
+      for (const file of prepared.changedFiles) ui.ok(ui.filepath(file));
+      ui.h2(`🚀 Starting ${agent.name} with model ${selectedModel}`);
+      process.exit(await launch.runPrepared(agent, prepared));
     } catch (err) {
       if (err instanceof Error && err.name === "ExitPromptError") {
         // User cancelled - graceful exit

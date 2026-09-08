@@ -1,6 +1,7 @@
 import { Command } from "commander";
 import { confirm, select } from "@inquirer/prompts";
 import { AgentService } from "../services/agent.js";
+import { LaunchCoordinator } from "../services/launch.js";
 import { PoolService } from "../services/pool.js";
 import { SettingsService } from "../services/settings.js";
 import { endpointFromModelsBaseUrl } from "../services/endpoint.js";
@@ -28,6 +29,7 @@ export const customizeCommand = new Command("customize")
   .action(async () => {
     const agentService = new AgentService();
     const poolService = new PoolService();
+    const launch = new LaunchCoordinator(poolService, agentService);
     const settingsService = new SettingsService();
 
     try {
@@ -104,10 +106,7 @@ export const customizeCommand = new Command("customize")
 
         // 3. Pull the model list from the CLI Hop API and let the user choose.
         const spinner = new ui.Spinner("Fetching models from CLI Hop API");
-        const { pools, source, error, models } = await poolService.resolvePools({
-          apiKey: settings.apiKey,
-          baseUrl: settings.baseUrl,
-        });
+        const { pools, source, error, models } = await launch.resolvePools(settings);
         spinner.stop();
         if (source === "local" && error) {
           ui.warn(`${error} — using local pools`);
@@ -117,9 +116,7 @@ export const customizeCommand = new Command("customize")
           ui.ok(`${pools.length} models loaded from API`);
         }
 
-        const compatiblePools = pools.filter((pool) =>
-          pool.agents.some((candidate) => candidate.id === agent.id)
-        );
+        const compatiblePools = launch.compatiblePools(pools, agent);
         if (compatiblePools.length === 0) {
           ui.danger(`No available CLI Hop models support ${agent.name}.`);
           continue;
@@ -134,14 +131,14 @@ export const customizeCommand = new Command("customize")
         ui.info(
           `Configuring ${agent.name} → ${ui.url(endpoint)} (${ui.val(pool.model)})`
         );
-        const changed = await agentService.prepare(agent, {
-          apiKey: settings.apiKey!,
-          endpoint,
-          models: models ?? [{ id: pool.model }],
-          selected: pool.model,
+        const prepared = await launch.prepare({
+          agent,
+          poolId,
+          model: pool.model,
+          settings,
+          models,
         });
-        for (const file of changed) ui.ok(ui.filepath(file));
-
+        for (const file of prepared.changedFiles) ui.ok(ui.filepath(file));
         if (agent.scrubShellConfig && await confirm({
           message: `Remove stale ${agent.name} exports from your shell rc files?`,
           default: false,
@@ -154,13 +151,7 @@ export const customizeCommand = new Command("customize")
 
         ui.h2(`🚀 Starting ${agent.name} with model ${pool.model}`);
         await settingsService.save({ ...settings, lastAgentId: agent.id });
-        const exitCode = await agentService.run(agent, {
-          pool: poolId,
-          model: pool.model,
-          apiKey: settings.apiKey,
-          baseUrl: settings.apiKey ? endpoint : undefined,
-        });
-        process.exit(exitCode);
+        process.exit(await launch.runPrepared(agent, prepared));
       }
     } catch (err) {
       if (err instanceof Error && err.name === "ExitPromptError") {

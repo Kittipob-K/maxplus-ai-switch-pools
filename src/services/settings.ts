@@ -38,7 +38,11 @@ export class SettingsService {
   }
 
   #resolveKeychain(): Keychain | null {
-    return (this.#keychain ??= openKeychain());
+    // `null` is an explicit file-only choice; only an unresolved `undefined`
+    // should trigger probing the OS keychain.
+    if (this.#keychain !== undefined) return this.#keychain;
+    this.#keychain = openKeychain();
+    return this.#keychain;
   }
 
   async #readFile(): Promise<Settings> {

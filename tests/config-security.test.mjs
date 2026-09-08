@@ -42,6 +42,17 @@ test("Settings save enforces private file permissions", async () => {
   assert.equal((await stat(filePath)).mode & 0o777, 0o600);
 });
 
+test("explicitly disabled keychain keeps credentials in the settings file", async () => {
+  const directory = await mkdtemp(join(tmpdir(), "cli-hop-settings-file-only-"));
+  const filePath = join(directory, "cli-hop", "settings.json");
+  const settings = new SettingsService(filePath, { keychain: null });
+
+  await settings.setApiKey("file-only-key");
+
+  assert.equal(JSON.parse(await readFile(filePath, "utf8")).apiKey, "file-only-key");
+  assert.equal(settings.lastCredentialLocation, "file");
+});
+
 test("Claude config refuses to overwrite malformed JSON", async () => {
   const directory = await mkdtemp(join(tmpdir(), "cli-hop-claude-"));
   const claudeJsonPath = join(directory, ".claude.json");

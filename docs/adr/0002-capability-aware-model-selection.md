@@ -15,3 +15,5 @@ Treat API-advertised capabilities as the source of truth. Agents declare support
 ## Consequences
 
 Unknown capabilities remain visible as unsupported until an agent adapter supports them. Adding support happens in an adapter rather than in shared selection logic. Fallback catalogue data must produce a warning because capabilities may be incomplete.
+
+When metadata is absent, adapters use conservative family fallbacks: GPT/Codex use OpenAI Responses, Claude uses Anthropic Messages, and Aider uses Chat Completions. Advertised capabilities always take precedence.

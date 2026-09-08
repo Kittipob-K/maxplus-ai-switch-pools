@@ -14,6 +14,7 @@ import { GrokConfigService } from "./grok-config.js";
 import { OmpConfigService } from "./omp-config.js";
 import { OpenCodeConfigService } from "./opencode-config.js";
 import { PiConfigService } from "./pi-config.js";
+import { GeminiConfigService } from "./gemini-config.js";
 import { scrubShellRc } from "./shell-scrub.js";
 import * as ui from "../ui.js";
 
@@ -22,6 +23,13 @@ import * as ui from "../ui.js";
  * Extend this list as more agents are supported (openai, custom, ...).
  */
 export const CUSTOMIZABLE_AGENTS: Agent[] = [
+  {
+    id: "gemini-cli", name: "Gemini CLI", command: "gemini",
+    apiKeyEnvVars: ["GEMINI_API_KEY"], baseUrlEnvVars: ["GOOGLE_GEMINI_BASE_URL"],
+    supportedProtocols: ["generateContent", "streamGenerateContent", "countTokens"],
+    prepare: async (input) => new GeminiConfigService().apply(input),
+    installUrl: "https://github.com/google-gemini/gemini-cli",
+  },
   {
     id: "claude-code",
     name: "Claude Code",

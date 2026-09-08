@@ -33,6 +33,9 @@ export function ompApiFor(model: RemoteModel): string {
   if (apis.includes("messages")) return "anthropic-messages";
   if (apis.includes("chat_completions")) return "openai-completions";
   if (apis.includes("responses")) return "openai-responses";
+  // Gateways that omit capability metadata commonly expose GPT/Codex models
+  // on the OpenAI responses channel. Avoid sending these through Anthropic.
+  if (/^(gpt|o[1-9]|codex)/i.test(model.id)) return "openai-responses";
   // No capability info (older gateway / local pools) - catalogue is
   // Claude-family, and this is what the env-var path always assumed.
   return "anthropic-messages";

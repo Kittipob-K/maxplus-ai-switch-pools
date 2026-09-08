@@ -26,7 +26,7 @@ export const CUSTOMIZABLE_AGENTS: Agent[] = [
   {
     id: "gemini-cli", name: "Gemini CLI", command: "gemini",
     apiKeyEnvVars: ["GEMINI_API_KEY", "GOOGLE_API_KEY"], baseUrlEnvVars: ["GOOGLE_GEMINI_BASE_URL"],
-    baseUrlSuffix: "",
+    baseUrlSuffix: "/gemini-vip",
     supportedProtocols: ["generateContent", "streamGenerateContent", "countTokens"],
     prepare: async (input) => new GeminiConfigService().apply(input),
     installUrl: "https://github.com/google-gemini/gemini-cli",

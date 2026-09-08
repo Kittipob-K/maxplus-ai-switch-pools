@@ -27,3 +27,9 @@ A per-agent file the tool writes so that agent talks to CLI Hop when launched
 directly. Always a *derived copy* of the Credential Store + Settings File —
 never an independent input, and freely overwritten or removed by the tool.
 _Avoid_: credential (it may contain one, but it is not where one is entered)
+# Model capabilities and wire selection
+
+- **Capability**: A named operation a model exposes, such as `messages`, `chat_completions`, `responses`, `generateContent`, `streamGenerateContent`, or `countTokens`.
+- **Wire**: The protocol/capability path an agent uses to communicate with a model.
+- **Wire preference**: A user's remembered wire choice scoped to a model and agent; it can be changed through normal launch flows or settings.
+- **Unsupported model**: A model with no capability supported by the selected agent; it cannot be launched automatically.

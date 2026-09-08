@@ -1,4 +1,4 @@
-import type { ModelsResponse, Pool, RemoteModel } from "../types.js";
+import type { ModelsResponse, Pool, RemoteModel, WireProtocol } from "../types.js";
 import { DEFAULT_MODELS_BASE_URL } from "../types.js";
 import { agentSupportsModel, CUSTOMIZABLE_AGENTS } from "./registry.js";
 
@@ -97,7 +97,9 @@ export class PoolService {
           id: m.id,
           displayName: m.display_name,
           type: m.type,
-          apis: caps.get(m.id),
+          apis: caps.get(m.id)?.filter((api): api is WireProtocol =>
+            ["messages", "chat_completions", "responses", "generateContent", "streamGenerateContent", "countTokens"].includes(api)
+          ),
         });
       }
 

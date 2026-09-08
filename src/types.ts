@@ -1,4 +1,10 @@
-export type WireProtocol = "messages" | "chat_completions" | "responses";
+export type WireProtocol =
+  | "messages"
+  | "chat_completions"
+  | "responses"
+  | "generateContent"
+  | "streamGenerateContent"
+  | "countTokens";
 
 /**
  * Environment variables that must be cleared (unset) before launching
@@ -132,6 +138,8 @@ export interface Settings {
   baseUrl?: string;
   /** Agent most recently launched through the interactive menu. */
   lastAgentId?: string;
+  /** Remembered wire choice, keyed by agent id then model id. */
+  wirePreferences?: Record<string, Record<string, WireProtocol>>;
 }
 
 /** Default CLI Hop API endpoint used to list selectable models/pools. */
@@ -146,7 +154,7 @@ export interface RemoteModel {
    * Wire protocols the gateway serves this model on, from the response's
    * cli-hop.models capability map (e.g. ["messages", "chat_completions"]).
    */
-  apis?: string[];
+  apis?: WireProtocol[];
 }
 
 /** Shape of the Anthropic-style paginated /models response. */

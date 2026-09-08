@@ -28,9 +28,9 @@ export function piApiFor(model: RemoteModel): string {
   if (apis.includes("messages")) return "anthropic-messages";
   if (apis.includes("chat_completions")) return "openai-completions";
   if (apis.includes("responses")) return "openai-responses";
-  if (apis.includes("generateContent") || apis.includes("streamGenerateContent")) return "google-generative-ai";
+  if (apis.includes("generateContent") || apis.includes("streamGenerateContent")) return "openai-responses";
   if (/^(gpt|o[1-9]|codex)/i.test(model.id)) return "openai-responses";
-  if (/^gemini/i.test(model.id)) return "google-generative-ai";
+  if (/^gemini/i.test(model.id)) return "openai-responses";
   return "anthropic-messages";
 }
 

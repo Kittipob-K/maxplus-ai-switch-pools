@@ -30,6 +30,23 @@ export const runCommand = new Command("run")
       // API_KEY, prompting for missing values (next-best-step flow).
       const settings = await ensurePrerequisites(settingsService);
 
+      const requestedAgent = options.agent as string | undefined;
+      if (requestedAgent && !isAgentId(requestedAgent)) {
+        ui.danger(
+          `Unknown agent "${requestedAgent}". Choose one of: ${CUSTOMIZABLE_AGENTS.map((agent) => agent.id).join(", ")}`
+        );
+        process.exit(1);
+      }
+
+      // Install check for explicitly requested agent: validate the binary
+      // exists BEFORE fetching pools to avoid wasting the API call.
+      if (requestedAgent) {
+        const requestedAgentObj = getAgentById(requestedAgent);
+        if (requestedAgentObj && !(await ensureAgentInstalled(requestedAgentObj))) {
+          process.exit(1);
+        }
+      }
+
       // Resolve selectable pools: live CLI Hop model list when available,
       // otherwise the built-in local pools.
       const spinner = new ui.Spinner("Fetching models from CLI Hop API");
@@ -38,22 +55,11 @@ export const runCommand = new Command("run")
       if (error) ui.warn(`${error} — using local pools`);
       if (source === "remote") ui.ok(`${pools.length} models loaded from API`);
 
-      const requestedAgent = options.agent as string | undefined;
-      if (requestedAgent && !isAgentId(requestedAgent)) {
-        ui.danger(
-          `Unknown agent "${requestedAgent}". Choose one of: ${CUSTOMIZABLE_AGENTS.map((agent) => agent.id).join(", ")}`
-        );
-        process.exit(1);
-      }
       const selectablePools = requestedAgent
         ? pools.filter((pool) =>
             pool.agents.some((agent) => agent.id === requestedAgent)
           )
         : pools;
-      if (selectablePools.length === 0) {
-        ui.danger(`No available CLI Hop models support ${requestedAgent}.`);
-        process.exit(1);
-      }
 
       // Select pool if not specified
       let poolId = options.pool;
@@ -95,9 +101,6 @@ export const runCommand = new Command("run")
         process.exit(1);
       }
 
-      // Install check (next-best-step): offer the official installer when
-      // the CLI is missing; without it the spawn would fail with ENOENT.
-      if (!(await ensureAgentInstalled(agent))) process.exit(1);
       if (!options.model && !pool.agents.some((candidate) => candidate.id === agent.id)) {
         ui.danger(`${agent.name} does not support the protocols advertised by ${pool.model}`);
         process.exit(1);

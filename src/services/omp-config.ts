@@ -33,13 +33,11 @@ export function ompApiFor(model: RemoteModel): string {
   if (apis.includes("messages")) return "anthropic-messages";
   if (apis.includes("chat_completions")) return "openai-completions";
   if (apis.includes("responses")) return "openai-responses";
-  if (apis.includes("generateContent") || apis.includes("streamGenerateContent")) {
-    return "google-generative-ai";
-  }
+  if (apis.includes("generateContent") || apis.includes("streamGenerateContent")) return "openai-responses";
   // Gateways that omit capability metadata commonly expose GPT/Codex models
   // on the OpenAI responses channel. Avoid sending these through Anthropic.
   if (/^(gpt|o[1-9]|codex)/i.test(model.id)) return "openai-responses";
-  if (/^gemini/i.test(model.id)) return "google-generative-ai";
+  if (/^gemini/i.test(model.id)) return "openai-responses";
   // No capability info (older gateway / local pools) - catalogue is
   // Claude-family, and this is what the env-var path always assumed.
   return "anthropic-messages";
@@ -95,7 +93,6 @@ export class OmpConfigService {
       ? [selected, ...input.models.filter((m) => m.id !== selected.id)]
       : [...input.models, { id: input.selected }];
 
-    const geminiModels = catalogue.filter((m) => ompApiFor(m) === "google-generative-ai");
     providers[OMP_PROVIDER_ID] = {
       baseUrl: `${input.endpoint.replace(/\/+$/, "")}/v1`,
       apiKey: OMP_API_KEY_ENV,
@@ -103,20 +100,12 @@ export class OmpConfigService {
       authHeader: true,
       // Anthropic-fronted proxies commonly reject the `strict` tool field.
       disableStrictTools: true,
-      models: catalogue.filter((m) => !geminiModels.includes(m)).map((m) => ({
+      models: catalogue.map((m) => ({
         id: m.id,
         name: m.displayName ?? m.id,
         api: ompApiFor(m),
       })),
     };
-    if (geminiModels.length > 0) {
-      providers[`${OMP_PROVIDER_ID}-gemini`] = {
-        baseUrl: `${input.endpoint.replace(/\/+$/, "")}/v1beta`,
-        apiKey: OMP_API_KEY_ENV,
-        authHeader: true,
-        models: geminiModels.map((m) => ({ id: m.id, name: m.displayName ?? m.id, api: "google-generative-ai" })),
-      };
-    }
     doc = { ...doc, providers };
 
     await writeSecureFile(this.modelsPath, stringify(doc));

@@ -108,10 +108,7 @@ export class AgentService {
 
     // Add model flag if specified; agent may need a provider prefix.
     if (options.model) {
-      const prefix = agent.id === "omp" && /^gemini/i.test(options.model)
-        ? "cli-hop-gemini/"
-        : (agent.modelPrefix ?? "");
-      args.push("--model", prefix + options.model);
+      args.push("--model", (agent.modelPrefix ?? "") + options.model);
     }
 
     // Add any extra args

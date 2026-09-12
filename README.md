@@ -90,7 +90,9 @@ $ cli-hop
   verbatim one-liners from each vendor's docs, e.g. `curl -fsSL
   https://claude.ai/install.sh | bash` (Claude Code),
   `npm install -g --ignore-scripts @earendil-works/pi-coding-agent` (Pi),
-  `npm install -g opencode-ai` (OpenCode on every supported platform), and
+  `npm install -g opencode-ai` followed by its postinstall script
+  (OpenCode on every supported platform — the npm package is a stub until
+  postinstall downloads the platform-specific native binary), and
   `irm https://x.ai/cli/install.ps1 | iex` (Grok Build on Windows).
 - **Claude Code configuration (installer parity)** — mirrors the official
   CLI Hop installer: writes `~/.claude.json` and `~/.claude/settings.json`

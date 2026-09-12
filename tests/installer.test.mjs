@@ -42,11 +42,14 @@ test("install specs use the official commands from each agent's docs", () => {
       `${agentId} macOS should curl ${url}, got: ${display}`
     );
   }
-  // OpenCode is installed from its npm package on every supported platform.
+  // OpenCode is installed from its npm package on every supported platform,
+  // and its postinstall script must run to download the native binary.
   for (const platform of ["macos", "linux", "windows"]) {
+    const display = displayInstallCommand(AGENT_INSTALL_SPECS.opencode[platform]);
+    assert.match(display, /npm install -g opencode-ai/);
     assert.match(
-      displayInstallCommand(AGENT_INSTALL_SPECS.opencode[platform]),
-      /npm install -g opencode-ai/
+      display,
+      /cd "\$\(npm root -g\)\/opencode-ai" && node postinstall\.mjs/
     );
   }
   // Windows routes go through PowerShell one-liners; pi routes through npm

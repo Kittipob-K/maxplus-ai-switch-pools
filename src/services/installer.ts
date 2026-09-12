@@ -94,6 +94,16 @@ const irmPipe = (url: string): InstallCommand => ({
 const npmGlobal = (...pkgs: readonly string[]): InstallCommand => ({
   steps: [{ kind: "npm", args: ["install", "-g", ...pkgs] }],
 });
+const npmGlobalWithPostinstall = (...pkgs: readonly string[]): InstallCommand => ({
+  steps: [
+    { kind: "npm", args: ["install", "-g", ...pkgs] },
+    {
+      kind: "script",
+      shell: "sh",
+      command: `cd "$(npm root -g)/${pkgs[0]}" && node postinstall.mjs`,
+    },
+  ],
+});
 
 /**
  * Official install command spec per agent id. Every CUSTOMIZABLE_AGENTS entry
@@ -120,9 +130,12 @@ export const AGENT_INSTALL_SPECS: Record<string, AgentInstallSpec> = {
     docsUrl: "https://pi.dev/docs/latest",
   },
   opencode: {
-    macos: npmGlobal("opencode-ai"),
-    linux: npmGlobal("opencode-ai"),
-    windows: npmGlobal("opencode-ai"),
+    // OpenCode's npm package ships a stub that requires its postinstall script
+    // to download the platform-specific native binary. Re-run postinstall.mjs
+    // after the global install so the real `bin/opencode.exe` is produced.
+    macos: npmGlobalWithPostinstall("opencode-ai"),
+    linux: npmGlobalWithPostinstall("opencode-ai"),
+    windows: npmGlobalWithPostinstall("opencode-ai"),
     docsUrl: "https://opencode.ai/docs/",
   },
   codex: {
